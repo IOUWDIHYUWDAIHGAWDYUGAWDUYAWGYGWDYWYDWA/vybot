@@ -1,0 +1,30 @@
+name: Agent Watchdog
+
+on:
+  schedule:
+    - cron: '*/30 * * * *' # Every 30 minutes
+  workflow_dispatch:       # Manual trigger
+
+jobs:
+  health-check:
+    name: Check Agent Health
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Agent Health Endpoint
+        run: |
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" ${{ secrets.AGENT_HEALTH_URL }} || echo "000")
+          echo "Health check status: $RESPONSE"
+          if [ "$RESPONSE" != "200" ]; then
+            echo "⚠️ Agent is down! Status: $RESPONSE"
+            echo "AGENT_DOWN=true" >> $GITHUB_ENV
+          else
+            echo "✅ Agent is healthy"
+          fi
+
+      - name: Restart Agent (if down)
+        if: env.AGENT_DOWN == 'true'
+        run: |
+          echo "🔄 Attempting to restart agent..."
+          curl -X POST ${{ secrets.AGENT_RESTART_URL }} \
+            -H "Authorization: Bearer ${{ secrets.AGENT_RESTART_TOKEN }}" \
+            || echo "Restart request failed"

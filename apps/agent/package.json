@@ -1,0 +1,27 @@
+{
+  "name": "@vybot/agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/main.ts",
+    "start": "node dist/main.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@vybot/core": "workspace:*",
+    "@vybot/adapters": "workspace:*",
+    "@vybot/crypto": "workspace:*",
+    "@vybot/db": "workspace:*",
+    "@vybot/discovery": "workspace:*",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  }
+}

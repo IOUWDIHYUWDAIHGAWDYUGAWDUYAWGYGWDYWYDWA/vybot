@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { VyAction, VyResult } from '@vybot/core';
-import { BaseAdapter, type AdapterConfig, type AdapterCapability } from './base.js';
+import { BaseAdapter, type AdapterConfig, type AdapterCapability } from './base';
 
 /**
  * MCP (Model Context Protocol) adapter.

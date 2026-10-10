@@ -1,4 +1,4 @@
-import type { APIInfo } from './types.js';
+import type { APIInfo } from './types';
 
 /** Static registry of well-known API platforms */
 const REGISTRY: APIInfo[] = [

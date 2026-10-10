@@ -1,4 +1,4 @@
-import type { ProbeResult } from './types.js';
+import type { ProbeResult } from './types';
 
 const PROBE_PATHS = ['/', '/api', '/api/v1', '/v1', '/v2', '/health', '/status', '/me', '/self', '/info'];
 const TIMEOUT_MS = 5_000;

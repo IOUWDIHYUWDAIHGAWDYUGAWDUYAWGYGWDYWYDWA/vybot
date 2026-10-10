@@ -1,6 +1,6 @@
 import { AIRouter, EventBus, StateManager } from '@vybot/core';
 import { AdapterManager, DiscordAdapter } from '@vybot/adapters';
-import { TaskExecutor } from './executor.js';
+import { TaskExecutor } from './executor';
 
 /**
  * VyBot Agent — Main entry point.

@@ -1,4 +1,4 @@
-export * from './types.js';
-export { encrypt } from './encrypt.js';
-export { decrypt } from './decrypt.js';
-export { CredentialProxy } from './proxy.js';
+export * from './types';
+export { encrypt } from './encrypt';
+export { decrypt } from './decrypt';
+export { CredentialProxy } from './proxy';

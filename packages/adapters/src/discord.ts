@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { VyAction, VyResult } from '@vybot/core';
 import { CredentialProxy } from '@vybot/crypto';
 import type { ProxiedFetch } from '@vybot/crypto';
-import { BaseAdapter, type AdapterConfig, type AdapterCapability } from './base.js';
+import { BaseAdapter, type AdapterConfig, type AdapterCapability } from './base';
 
 const DISCORD_API = 'https://discord.com/api/v10';
 const GATEWAY_URL = 'wss://gateway.discord.gg/?v=10&encoding=json';

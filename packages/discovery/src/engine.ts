@@ -1,8 +1,8 @@
-import { detectKeyType } from './detector.js';
-import { APIRegistry } from './registry.js';
-import { APIProber } from './prober.js';
-import { ToolGenerator } from './tool-gen.js';
-import type { ConnectionInput, DiscoveryResult } from './types.js';
+import { detectKeyType } from './detector';
+import { APIRegistry } from './registry';
+import { APIProber } from './prober';
+import { ToolGenerator } from './tool-gen';
+import type { ConnectionInput, DiscoveryResult } from './types';
 
 /**
  * Main Discovery Engine — orchestrates the entire API discovery flow.

@@ -1,4 +1,4 @@
-import type { DetectionResult } from './types.js';
+import type { DetectionResult } from './types';
 
 interface Pattern {
   platform: string;

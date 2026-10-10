@@ -1,4 +1,4 @@
-import type { VyEvent, VyAction, TaskStatus } from './types.js';
+import type { VyEvent, VyAction, TaskStatus } from './types';
 
 /** Persistent state snapshot for a running agent task */
 export interface AgentState {

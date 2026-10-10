@@ -1,5 +1,5 @@
 import YAML from 'yaml';
-import type { ParsedAPI, ParsedEndpoint } from './types.js';
+import type { ParsedAPI, ParsedEndpoint } from './types';
 
 /**
  * Parse an OpenAPI 3.x specification (YAML or JSON string, or object).

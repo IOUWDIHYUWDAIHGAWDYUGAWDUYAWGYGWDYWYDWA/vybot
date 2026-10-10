@@ -1,5 +1,5 @@
 import { createDecipheriv, scryptSync } from 'node:crypto';
-import type { EncryptedData } from './types.js';
+import type { EncryptedData } from './types';
 
 const ALGORITHM = 'aes-256-gcm';
 const KEY_LENGTH = 32;

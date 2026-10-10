@@ -1,7 +1,7 @@
-export * from './types.js';
-export { detectKeyType } from './detector.js';
-export { APIRegistry } from './registry.js';
-export { APIProber } from './prober.js';
-export { parseOpenAPISpec } from './openapi.js';
-export { ToolGenerator } from './tool-gen.js';
-export { DiscoveryEngine } from './engine.js';
+export * from './types';
+export { detectKeyType } from './detector';
+export { APIRegistry } from './registry';
+export { APIProber } from './prober';
+export { parseOpenAPISpec } from './openapi';
+export { ToolGenerator } from './tool-gen';
+export { DiscoveryEngine } from './engine';

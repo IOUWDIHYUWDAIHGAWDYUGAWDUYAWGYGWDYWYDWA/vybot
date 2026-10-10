@@ -1,4 +1,4 @@
-import type { APIInfo, GeneratedTool, ParsedAPI, ProbeResult, DetectionResult } from './types.js';
+import type { APIInfo, GeneratedTool, ParsedAPI, ProbeResult, DetectionResult } from './types';
 
 /**
  * Generates AI-callable tool definitions from API discovery results.

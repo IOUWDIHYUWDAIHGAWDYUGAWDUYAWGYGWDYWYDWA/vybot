@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events';
-import { VyEvent, VyEventSource, VyEventType } from './types.js';
+import { VyEvent, VyEventSource, VyEventType } from './types';
 
 export type VyEventHandler = (event: VyEvent) => void | Promise<void>;
 

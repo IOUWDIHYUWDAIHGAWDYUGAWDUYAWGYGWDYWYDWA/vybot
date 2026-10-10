@@ -1,5 +1,5 @@
-import type { AIMessage, AITool, AIResponse, AIProvider } from './types.js';
-import { RateLimitExhaustedError, ProviderError } from './errors.js';
+import type { AIMessage, AITool, AIResponse, AIProvider } from './types';
+import { RateLimitExhaustedError, ProviderError } from './errors';
 
 /** Per-provider rate limit tracking */
 interface ProviderLimits {

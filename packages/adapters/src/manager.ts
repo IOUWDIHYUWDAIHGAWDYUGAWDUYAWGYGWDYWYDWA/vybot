@@ -1,5 +1,5 @@
 import type { VyEvent } from '@vybot/core';
-import { BaseAdapter } from './base.js';
+import { BaseAdapter } from './base';
 
 /**
  * Manages the lifecycle of all platform adapters.

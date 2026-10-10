@@ -1,5 +1,5 @@
-import { decrypt } from './decrypt.js';
-import type { EncryptedData, AuthType, ProxiedFetch } from './types.js';
+import { decrypt } from './decrypt';
+import type { EncryptedData, AuthType, ProxiedFetch } from './types';
 
 /**
  * Credential Proxy — the AI agent NEVER sees the raw API key.

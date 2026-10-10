@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { encrypt } from '@vybot/crypto';
 
+export const dynamic = 'force-static';
+
 export async function POST(req: Request) {
   try {
     const { name, type, platform, value } = await req.json();

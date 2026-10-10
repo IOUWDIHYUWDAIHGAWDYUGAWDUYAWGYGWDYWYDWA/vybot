@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { detectKeyType } from '@vybot/discovery';
 
+export const dynamic = 'force-static';
+
 export async function POST(req: Request) {
   try {
     const { value, hint } = await req.json();

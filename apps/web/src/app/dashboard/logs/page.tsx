@@ -1,53 +1,76 @@
+'use client';
+import { useState, useEffect } from 'react';
+import { getStoredLogs, type AgentLog } from '../../../lib/storage';
+
 export default function LogsPage() {
-  const logs = [
-    // Demo logs - will be populated from real data
-  ];
+  const [logs, setLogs] = useState<AgentLog[]>([]);
+
+  useEffect(() => {
+    setLogs(getStoredLogs());
+  }, []);
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
+    <div className="space-y-6 font-mono text-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.08] pb-5">
         <div>
-          <h1 className="text-2xl font-bold">Agent Logları</h1>
-          <p className="text-zinc-400 mt-1">AI agent&apos;ların her adımını takip et</p>
+          <h1 className="text-xl font-bold tracking-tight text-white">
+            Ajan Karar & Denetim Logları
+          </h1>
+          <p className="text-zinc-400 text-xs mt-1">
+            Yapay zekânın dinlediği her olay, ürettiği karar ve tetiklediği araç eylemleri.
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          <select className="input w-auto text-sm">
-            <option>Tüm görevler</option>
-          </select>
-          <select className="input w-auto text-sm">
-            <option>Son 24 saat</option>
-            <option>Son 7 gün</option>
-            <option>Son 30 gün</option>
-          </select>
-        </div>
+        <button
+          onClick={() => {
+            localStorage.removeItem('vybot_logs');
+            setLogs([]);
+          }}
+          className="text-zinc-500 hover:text-red-400 transition-colors text-xs self-start sm:self-auto"
+        >
+          Logları Temizle
+        </button>
       </div>
 
       {logs.length === 0 ? (
-        <div className="card text-center py-16">
-          <div className="text-5xl mb-4">📋</div>
-          <h2 className="text-xl font-semibold mb-2">Henüz log yok</h2>
-          <p className="text-zinc-500">Bir görev çalışmaya başlayınca loglar burada görünecek.</p>
+        <div className="bg-[#0a0a0f] border border-white/[0.08] rounded-xl text-center py-16">
+          <div className="text-3xl mb-3">📋</div>
+          <h2 className="text-sm font-semibold text-white mb-1">Henüz Denetim Kaydı Yok</h2>
+          <p className="text-zinc-500 text-xs max-w-sm mx-auto">
+            "Otonom Görevler" sayfasından bir görev çalıştırdığınızda yapay zekânın tüm kararları burada listelenir.
+          </p>
         </div>
       ) : (
-        <div className="card p-0 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-white/5">
-                <tr className="text-left text-sm text-zinc-400">
-                  <th className="px-4 py-3 font-medium">Zaman</th>
-                  <th className="px-4 py-3 font-medium">Görev</th>
-                  <th className="px-4 py-3 font-medium">Event</th>
-                  <th className="px-4 py-3 font-medium">AI Kararı</th>
-                  <th className="px-4 py-3 font-medium">Sonuç</th>
-                  <th className="px-4 py-3 font-medium">Provider</th>
-                  <th className="px-4 py-3 font-medium">Token</th>
+        <div className="border border-white/[0.08] rounded-xl overflow-x-auto bg-[#0a0a0f]">
+          <table className="w-full text-left">
+            <thead className="bg-[#08080c] border-b border-white/[0.08] text-[10px] text-zinc-400 uppercase tracking-wider">
+              <tr>
+                <th className="px-4 py-3">Zaman</th>
+                <th className="px-4 py-3">Görev Adı</th>
+                <th className="px-4 py-3">Tetikleyici</th>
+                <th className="px-4 py-3">Giriş / Event</th>
+                <th className="px-4 py-3">AI Çıktısı</th>
+                <th className="px-4 py-3">Model</th>
+                <th className="px-4 py-3 text-right">Durum</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/[0.04]">
+              {logs.map((log) => (
+                <tr key={log.id} className="hover:bg-white/[0.02] transition-colors">
+                  <td className="px-4 py-3 text-zinc-500">{log.timestamp}</td>
+                  <td className="px-4 py-3 font-bold text-white">{log.taskName}</td>
+                  <td className="px-4 py-3 text-zinc-400">{log.eventType}</td>
+                  <td className="px-4 py-3 text-zinc-300 max-w-xs truncate">{log.input}</td>
+                  <td className="px-4 py-3 text-emerald-400 max-w-xs truncate">{log.output}</td>
+                  <td className="px-4 py-3 text-zinc-400">{log.provider}</td>
+                  <td className="px-4 py-3 text-right">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      Başarılı
+                    </span>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {/* Log rows will go here */}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

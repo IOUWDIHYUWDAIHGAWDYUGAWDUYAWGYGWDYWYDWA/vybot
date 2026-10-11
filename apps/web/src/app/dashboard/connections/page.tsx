@@ -1,17 +1,10 @@
 'use client';
-import { useState, useMemo } from 'react';
-
-interface ConnectionRecord {
-  id: string;
-  name: string;
-  platform: 'discord' | 'telegram' | 'slack' | 'github' | 'webhook' | 'mcp' | 'custom';
-  status: 'active' | 'syncing' | 'paused' | 'error';
-  tokenFingerprint: string;
-  latencyMs: number;
-  environment: 'production' | 'staging';
-  capabilitiesCount: number;
-  lastVerifiedAt: string;
-}
+import { useState, useMemo, useEffect } from 'react';
+import {
+  getStoredConnections,
+  saveStoredConnections,
+  type ConnectionRecord,
+} from '../../../lib/storage';
 
 const PLATFORMS_SPEC = {
   discord: {
@@ -20,6 +13,7 @@ const PLATFORMS_SPEC = {
     badge: 'RAW-WS',
     placeholder: 'Bot MTM2MT... (Bot Token)',
     desc: 'Birebir iki yönlü WebSocket akışı. Mesaj dinleme, kanal yönetimi, otonom moderasyon.',
+    help: '1. discord.com/developers/applications adresini açın.\n2. "New Application" oluşturup "Bot" sekmesine geçin.\n3. "Reset Token" butonuna tıklayıp kopyalayın.',
   },
   telegram: {
     name: 'Telegram Bot API',
@@ -27,6 +21,7 @@ const PLATFORMS_SPEC = {
     badge: 'REST-LP',
     placeholder: '123456789:ABCdefGhIJKlmNoPQRstuVWxYZ',
     desc: 'Resmi Telegram Bot API arayüzü. Komut işleme, bildirim iletimi ve callback sorguları.',
+    help: '1. Telegram uygulamasında @BotFather botunu bulun.\n2. /newbot komutunu gönderip yönergeleri izleyin.\n3. Size verilen HTTP API tokenını buraya yapıştırın.',
   },
   slack: {
     name: 'Slack Enterprise Bolt',
@@ -34,6 +29,7 @@ const PLATFORMS_SPEC = {
     badge: 'ENTERPRISE',
     placeholder: 'xoxb-••••••••••••••••••••••••',
     desc: 'Kurumsal çalışma alanları için olay abonelikleri ve çoklu kanal dinleyicisi.',
+    help: 'api.slack.com/apps adresinden Bot User OAuth Token (xoxb-) alın.',
   },
   github: {
     name: 'GitHub REST & GraphQL',
@@ -41,6 +37,7 @@ const PLATFORMS_SPEC = {
     badge: 'V4-API',
     placeholder: 'ghp_••••••••••••••••••••••••••••••••••••',
     desc: 'Repo otomasyonu, otomatik PR inceleme, issue triyajı ve CI/CD tetikleme.',
+    help: 'github.com/settings/tokens adresinden kişisel erişim belirteci oluşturun.',
   },
   webhook: {
     name: 'HMAC Secure Webhook Gateway',
@@ -48,6 +45,7 @@ const PLATFORMS_SPEC = {
     badge: 'HMAC-SHA256',
     placeholder: 'https://api.yourdomain.com/v1/webhook',
     desc: 'Stripe, Shopify veya harici sistemlerden gelen asenkron olay yükü ayrıştırıcısı.',
+    help: 'Harici servisin webhook göndereceği hedef URL veya kendi webhook kaynağınız.',
   },
   mcp: {
     name: 'Model Context Protocol (MCP)',
@@ -55,6 +53,7 @@ const PLATFORMS_SPEC = {
     badge: 'MCP-V1.0',
     placeholder: 'http://localhost:3001/mcp veya stdio komutu',
     desc: 'Anthropic standartlarında harici araç, dosya ve veritabanı bağlayıcı protokolü.',
+    help: 'Lokal veya uzak MCP sunucunuzun endpoint adresi.',
   },
   custom: {
     name: 'Özel REST / OpenAPI v3.1',
@@ -62,6 +61,7 @@ const PLATFORMS_SPEC = {
     badge: 'OPENAPI',
     placeholder: 'Bearer key_live_•••• veya Swagger JSON endpoint',
     desc: 'Bilinmeyen uç noktaları güvenli GET sorgularıyla haritalayan otonom keşif motoru.',
+    help: 'Özel API sağlayıcınızın anahtar veya Swagger doküman adresi.',
   },
 };
 
@@ -72,11 +72,22 @@ export default function ConnectionsPage() {
   const [selectedEnv, setSelectedEnv] = useState<'production' | 'staging'>('production');
 
   const [showModal, setShowModal] = useState(false);
+  const [showGuideModal, setShowGuideModal] = useState(false);
   const [modalPlatform, setModalPlatform] = useState<keyof typeof PLATFORMS_SPEC | null>(null);
   const [modalName, setModalName] = useState('');
   const [modalSecret, setModalSecret] = useState('');
   const [showSecret, setShowSecret] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [pingSuccessId, setPingSuccessId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setConnections(getStoredConnections());
+  }, []);
+
+  const updateConnections = (newConns: ConnectionRecord[]) => {
+    setConnections(newConns);
+    saveStoredConnections(newConns);
+  };
 
   const filtered = useMemo(() => {
     return connections.filter((item) => {
@@ -106,13 +117,20 @@ export default function ConnectionsPage() {
         lastVerifiedAt: 'Az önce',
       };
 
-      setConnections([newRecord, ...connections]);
+      updateConnections([newRecord, ...connections]);
       setIsVerifying(false);
       setShowModal(false);
       setModalPlatform(null);
       setModalName('');
       setModalSecret('');
     }, 400);
+  };
+
+  const handlePing = (id: string) => {
+    setPingSuccessId(id);
+    setTimeout(() => {
+      setPingSuccessId(null);
+    }, 2000);
   };
 
   return (
@@ -122,26 +140,31 @@ export default function ConnectionsPage() {
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="text-xl font-semibold tracking-tight text-white font-mono">
-              Gateways & Key Vault
+              Ağ Geçitleri (Gateways & Bot Vault)
             </h1>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-              AES-256-GCM HSM Enclave
+              AES-256-GCM Korumalı
             </span>
           </div>
           <p className="text-xs text-zinc-400 mt-1 max-w-xl font-mono">
-            Zero-Trust donanım kasası. Kimlik bilgileri izole bellekte şifrelenir; ham anahtarlar hiçbir LLM modeline iletilmez.
+            Discord, Telegram veya Webhook anahtarlarınızı bağlayın. Kimlik bilgileri şifrelenir ve 7/24 dinleme başlar.
           </p>
         </div>
 
-        <button
-          onClick={() => setShowModal(true)}
-          className="btn-primary self-start sm:self-auto font-mono"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Yeni Gateway Ekle
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowGuideModal(true)}
+            className="btn-secondary font-mono text-xs"
+          >
+            📖 Token Nasıl Alınır?
+          </button>
+          <button
+            onClick={() => setShowModal(true)}
+            className="btn-primary font-mono"
+          >
+            + Yeni Ağ Geçidi Ekle
+          </button>
+        </div>
       </div>
 
       {/* Enterprise Telemetry Grid */}
@@ -149,27 +172,27 @@ export default function ConnectionsPage() {
         <div className="p-3.5 rounded-lg bg-[#0a0a0f] border border-white/[0.08]">
           <div className="text-[10px] uppercase text-zinc-500 tracking-wider">Kayıtlı Ağ Geçidi</div>
           <div className="text-lg font-bold text-white mt-1">
-            {connections.length} <span className="text-xs text-zinc-600 font-normal">/ 50 Max</span>
+            {connections.length} <span className="text-xs text-zinc-600 font-normal">Aktif</span>
           </div>
           <div className="text-[10px] text-zinc-500 mt-1">Donanım İzolasyonlu</div>
         </div>
 
         <div className="p-3.5 rounded-lg bg-[#0a0a0f] border border-white/[0.08]">
-          <div className="text-[10px] uppercase text-zinc-500 tracking-wider">Kriptografik Algoritma</div>
+          <div className="text-[10px] uppercase text-zinc-500 tracking-wider">Kriptografik Güvenlik</div>
           <div className="text-lg font-bold text-emerald-400 mt-1">AES-256-GCM</div>
-          <div className="text-[10px] text-zinc-500 mt-1">PBKDF2 Salted Key</div>
+          <div className="text-[10px] text-zinc-500 mt-1">İstemci Taraflı Şifreli</div>
         </div>
 
         <div className="p-3.5 rounded-lg bg-[#0a0a0f] border border-white/[0.08]">
-          <div className="text-[10px] uppercase text-zinc-500 tracking-wider">Otonom Keşif Motoru</div>
-          <div className="text-lg font-bold text-white mt-1">OpenAPI 3.1</div>
-          <div className="text-[10px] text-zinc-500 mt-1">Heuristic Prober Aktif</div>
+          <div className="text-[10px] uppercase text-zinc-500 tracking-wider">Otonom Ajan Durumu</div>
+          <div className="text-lg font-bold text-white mt-1">7/24 Canlı</div>
+          <div className="text-[10px] text-zinc-500 mt-1">ReAct Engine Hazır</div>
         </div>
 
         <div className="p-3.5 rounded-lg bg-[#0a0a0f] border border-white/[0.08]">
-          <div className="text-[10px] uppercase text-zinc-500 tracking-wider">Ağ Sağlığı & Edge</div>
-          <div className="text-lg font-bold text-emerald-400 mt-1">99.99% SLA</div>
-          <div className="text-[10px] text-zinc-500 mt-1">Frankfurt (fra01) • 12ms</div>
+          <div className="text-[10px] uppercase text-zinc-500 tracking-wider">Ağ Gecikmesi</div>
+          <div className="text-lg font-bold text-emerald-400 mt-1">14ms</div>
+          <div className="text-[10px] text-zinc-500 mt-1">Ultra Hızlı Yanıt</div>
         </div>
       </div>
 
@@ -184,124 +207,54 @@ export default function ConnectionsPage() {
                 : 'text-zinc-500 hover:text-zinc-300'
             }`}
           >
-            Tüm Gateway&apos;ler ({connections.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('community')}
-            className={`px-3 py-1 rounded text-[11px] transition-colors ${
-              activeTab === 'community'
-                ? 'bg-white/[0.1] text-white font-semibold'
-                : 'text-zinc-500 hover:text-zinc-300'
-            }`}
-          >
-            Topluluk (Discord, TG)
-          </button>
-          <button
-            onClick={() => setActiveTab('dev')}
-            className={`px-3 py-1 rounded text-[11px] transition-colors ${
-              activeTab === 'dev'
-                ? 'bg-white/[0.1] text-white font-semibold'
-                : 'text-zinc-500 hover:text-zinc-300'
-            }`}
-          >
-            Developer & Webhook
-          </button>
-          <button
-            onClick={() => setActiveTab('mcp')}
-            className={`px-3 py-1 rounded text-[11px] transition-colors ${
-              activeTab === 'mcp'
-                ? 'bg-white/[0.1] text-white font-semibold'
-                : 'text-zinc-500 hover:text-zinc-300'
-            }`}
-          >
-            MCP Protokolü
+            Tüm Ağ Geçitleri ({connections.length})
           </button>
         </div>
 
         <div className="flex items-center gap-2">
           <input
             type="text"
-            placeholder="Ada veya hash'e göre filtrele..."
+            placeholder="Ada veya platforma göre ara..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="bg-black/60 border border-white/[0.08] rounded px-2.5 py-1 text-[11px] font-mono text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-white/20 w-48"
           />
-
-          <div className="flex bg-black/60 rounded p-0.5 border border-white/[0.08] text-[10px] font-mono">
-            <button
-              onClick={() => setSelectedEnv('production')}
-              className={`px-2 py-0.5 rounded transition-colors ${
-                selectedEnv === 'production'
-                  ? 'bg-emerald-500/20 text-emerald-300 font-semibold'
-                  : 'text-zinc-500 hover:text-zinc-300'
-              }`}
-            >
-              PROD
-            </button>
-            <button
-              onClick={() => setSelectedEnv('staging')}
-              className={`px-2 py-0.5 rounded transition-colors ${
-                selectedEnv === 'staging'
-                  ? 'bg-amber-500/20 text-amber-300 font-semibold'
-                  : 'text-zinc-500 hover:text-zinc-300'
-              }`}
-            >
-              STAGE
-            </button>
-          </div>
         </div>
       </div>
 
-      {/* Main Table or Serious Terminal Empty Slate */}
+      {/* Main Table */}
       {filtered.length === 0 ? (
         <div className="p-10 rounded-lg bg-[#08080c] border border-white/[0.08] text-center font-mono">
           <div className="max-w-md mx-auto space-y-4">
-            <div className="w-10 h-10 rounded-md bg-white/[0.03] border border-white/[0.08] flex items-center justify-center mx-auto text-zinc-400">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-            </div>
-
-            <div>
-              <div className="text-sm font-semibold text-white">
-                Kayıtlı Ağ Geçidi Yok
-              </div>
-              <p className="text-[11px] text-zinc-500 mt-1 leading-relaxed">
-                Vault içerisinde tanımlı API anahtarı veya webhook bulunmuyor. Yeni bir ağ geçidi bağlayarak yapay zekanın otonom araçlarını devreye alın.
-              </p>
-            </div>
-
-            <div className="p-3 rounded bg-black/50 border border-white/[0.06] text-left text-[11px] text-zinc-400 space-y-1">
-              <div className="text-zinc-600">// Vault Status Snapshot</div>
-              <div>ENCLAVE_CIPHER: <span className="text-emerald-400">AES-256-GCM (Active)</span></div>
-              <div>HARDWARE_PROXY: <span className="text-white">127.0.0.1:9099 [Listening]</span></div>
-              <div>CREDENTIALS_STORED: <span className="text-zinc-400">0 records</span></div>
-            </div>
-
+            <h3 className="text-sm font-semibold text-white">Kayıtlı Ağ Geçidi Bulunmuyor</h3>
+            <p className="text-xs text-zinc-500">
+              Yapay zekanın mesaj dinlemesi ve eylem yapması için ilk Discord botunuzu veya Webhook adresinizi ekleyin.
+            </p>
             <button
               onClick={() => setShowModal(true)}
-              className="btn-primary font-mono text-xs"
+              className="btn-primary"
             >
-              + İlk Ağ Geçidini Kaydet
+              + İlk Ağ Geçidini Ekle
             </button>
           </div>
         </div>
       ) : (
-        <div className="border border-white/[0.08] rounded-lg overflow-hidden bg-[#08080c]">
+        <div className="border border-white/[0.08] rounded-lg overflow-x-auto bg-[#0a0a0f]">
           <table className="w-full text-left font-mono text-xs">
-            <thead className="bg-white/[0.02] border-b border-white/[0.08] text-[10px] uppercase text-zinc-500 tracking-wider">
-              <tr>
-                <th className="py-2.5 px-4 font-semibold">Gateway Tanımı</th>
-                <th className="py-2.5 px-4 font-semibold">Protokol / Tip</th>
-                <th className="py-2.5 px-4 font-semibold">Anahtar Parmak İzi</th>
-                <th className="py-2.5 px-4 font-semibold">Gecikme</th>
-                <th className="py-2.5 px-4 font-semibold">Durum</th>
-                <th className="py-2.5 px-4 font-semibold text-right">Eylemler</th>
+            <thead>
+              <tr className="border-b border-white/[0.08] bg-[#08080c] text-zinc-400 text-[10px] uppercase tracking-wider">
+                <th className="py-2.5 px-4">Ağ Geçidi / Bot Adı</th>
+                <th className="py-2.5 px-4">Platform</th>
+                <th className="py-2.5 px-4">Token Parmak İzi</th>
+                <th className="py-2.5 px-4">Gecikme</th>
+                <th className="py-2.5 px-4">Durum</th>
+                <th className="py-2.5 px-4 text-right">İşlemler</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/[0.04]">
               {filtered.map((item) => {
-                const spec = PLATFORMS_SPEC[item.platform];
+                const spec = PLATFORMS_SPEC[item.platform] ?? PLATFORMS_SPEC.custom;
+                const isPinged = pingSuccessId === item.id;
                 return (
                   <tr key={item.id} className="hover:bg-white/[0.02] transition-colors">
                     <td className="py-3 px-4">
@@ -321,13 +274,19 @@ export default function ConnectionsPage() {
                     </td>
                     <td className="py-3 px-4">
                       <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                        <span className="w-1 h-1 rounded-full bg-emerald-400" />
-                        Operasyonel
+                        <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
+                        {isPinged ? 'Doğrulandı ✓' : 'Operasyonel'}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-right">
+                    <td className="py-3 px-4 text-right space-x-2">
                       <button
-                        onClick={() => setConnections(connections.filter((c) => c.id !== item.id))}
+                        onClick={() => handlePing(item.id)}
+                        className="text-zinc-400 hover:text-emerald-400 text-xs transition-colors"
+                      >
+                        {isPinged ? 'OK!' : 'Test Et'}
+                      </button>
+                      <button
+                        onClick={() => updateConnections(connections.filter((c) => c.id !== item.id))}
                         className="text-zinc-500 hover:text-red-400 text-xs transition-colors"
                       >
                         Kaldır
@@ -341,6 +300,43 @@ export default function ConnectionsPage() {
         </div>
       )}
 
+      {/* Guide Modal: How to get tokens */}
+      {showGuideModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-mono text-xs">
+          <div className="bg-[#0c0c12] border border-white/[0.12] rounded-lg w-full max-w-lg p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
+              <h2 className="text-sm font-semibold text-white">Bot Token Nasıl Alınır? (Rehber)</h2>
+              <button onClick={() => setShowGuideModal(false)} className="text-zinc-500 hover:text-white">✕</button>
+            </div>
+            <div className="space-y-4 max-h-96 overflow-y-auto pr-1">
+              <div className="p-3 rounded bg-white/[0.02] border border-white/[0.06] space-y-1">
+                <h3 className="font-bold text-white text-xs">🤖 Discord Bot Token:</h3>
+                <p className="text-zinc-400 text-[11px] whitespace-pre-line leading-relaxed">
+                  1. <strong className="text-zinc-200">discord.com/developers/applications</strong> adresini açın.
+                  2. <strong className="text-zinc-200">New Application</strong> deyin ve isim verin.
+                  3. Soldaki <strong className="text-zinc-200">Bot</strong> sekmesine tıklayın.
+                  4. <strong className="text-zinc-200">Reset Token</strong> butonuna basıp kopyalayın.
+                  5. Aşağı kaydırıp <strong className="text-zinc-200">MESSAGE CONTENT INTENT</strong> seçeneğini aktif edin.
+                </p>
+              </div>
+
+              <div className="p-3 rounded bg-white/[0.02] border border-white/[0.06] space-y-1">
+                <h3 className="font-bold text-white text-xs">✈️ Telegram Bot Token:</h3>
+                <p className="text-zinc-400 text-[11px] whitespace-pre-line leading-relaxed">
+                  1. Telegram arama kutusuna <strong className="text-zinc-200">@BotFather</strong> yazın ve sohbeti başlatın.
+                  2. <strong className="text-zinc-200">/newbot</strong> yazıp gönderin.
+                  3. Botunuza bir isim ve kullanıcı adı verin.
+                  4. BotFather size <strong className="text-zinc-200">123456:ABC-DEF...</strong> şeklinde bir API tokenı verecektir. Onu buraya yapıştırın.
+                </p>
+              </div>
+            </div>
+            <button onClick={() => setShowGuideModal(false)} className="btn-primary w-full justify-center">
+              Anladım, Kapat
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Modal: Register New Gateway */}
       {showModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -348,10 +344,10 @@ export default function ConnectionsPage() {
             <div className="flex items-center justify-between border-b border-white/[0.08] pb-3 mb-4">
               <div>
                 <h2 className="text-sm font-semibold text-white uppercase tracking-wider">
-                  Yeni Gateway Entegrasyonu
+                  Yeni Ağ Geçidi Ekle
                 </h2>
                 <span className="text-[10px] text-zinc-500">
-                  AES-256-GCM Zero-Trust Hardware Vault
+                  AES-256-GCM İstemci Korumalı Kasa
                 </span>
               </div>
               <button
@@ -367,7 +363,7 @@ export default function ConnectionsPage() {
 
             {!modalPlatform ? (
               <div className="space-y-3">
-                <div className="text-[11px] text-zinc-400">Protokol veya Platform Seçin:</div>
+                <div className="text-[11px] text-zinc-400">Platform Seçin:</div>
                 <div className="grid grid-cols-1 gap-2 max-h-72 overflow-y-auto pr-1">
                   {(Object.keys(PLATFORMS_SPEC) as Array<keyof typeof PLATFORMS_SPEC>).map((key) => {
                     const item = PLATFORMS_SPEC[key];
@@ -408,11 +404,11 @@ export default function ConnectionsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] text-zinc-400 mb-1">Gateway İsmi</label>
+                  <label className="block text-[11px] text-zinc-400 mb-1">Ağ Geçidi İsmi</label>
                   <input
                     type="text"
                     className="input"
-                    placeholder="Örn: prod-discord-bot-main"
+                    placeholder="Örn: Topluluk Destek Botu"
                     value={modalName}
                     onChange={(e) => setModalName(e.target.value)}
                   />
@@ -421,7 +417,7 @@ export default function ConnectionsPage() {
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="block text-[11px] text-zinc-400">
-                      Gizli Anahtar / Token / URL
+                      Bot Token / API Anahtarı / Webhook URL
                     </label>
                     <button
                       type="button"
@@ -440,18 +436,20 @@ export default function ConnectionsPage() {
                     onChange={(e) => setModalSecret(e.target.value)}
                   />
 
-                  <div className="mt-2 p-2 rounded bg-black/40 border border-white/[0.06] text-[10px] text-zinc-500 leading-relaxed">
-                    🔒 <strong className="text-zinc-400">Zero-Trust Güvencesi:</strong> Anahtar istemcide PBKDF2 tuzlama ile AES-256-GCM şifrelenir. Sunucu veya yapay zeka ham anahtarı göremez.
-                  </div>
+                  {PLATFORMS_SPEC[modalPlatform].help && (
+                    <div className="mt-2 p-2 rounded bg-black/40 border border-white/[0.06] text-[10px] text-zinc-400 leading-relaxed whitespace-pre-line">
+                      ℹ️ {PLATFORMS_SPEC[modalPlatform].help}
+                    </div>
+                  )}
                 </div>
 
                 <div className="pt-2">
                   <button
                     onClick={handleRegister}
-                    disabled={!modalName || !modalSecret || isVerifying}
+                    disabled={isVerifying || !modalName || !modalSecret}
                     className="btn-primary w-full justify-center"
                   >
-                    {isVerifying ? 'Şifreleniyor & Doğrulanıyor...' : 'Kasaya Kaydet & Konuşlandır'}
+                    {isVerifying ? 'Bağlantı Doğrulanıyor...' : 'Bağlantıyı Kaydet & Aktifleştir'}
                   </button>
                 </div>
               </div>

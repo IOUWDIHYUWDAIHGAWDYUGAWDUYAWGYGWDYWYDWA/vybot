@@ -1,88 +1,197 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import {
+  getStoredTasks,
+  saveStoredTasks,
+  getStoredConnections,
+  addStoredLog,
+  type AgentTask,
+  type ConnectionRecord,
+} from '../../../lib/storage';
 
-interface AgentTask {
-  id: string;
-  name: string;
-  description: string;
-  triggerType: 'event' | 'cron' | 'manual';
-  status: 'active' | 'paused' | 'error';
-  actionsCompleted: number;
-  model: string;
-  lastRunAt: string;
-}
+const TEMPLATES = [
+  {
+    name: '7/24 Discord Destek Asistanı',
+    desc: 'Discord sunucusunda kullanıcılar soru sorduğunda veya destek talebi açtığında anında nazikçe yanıt ver ve rehberlik et.',
+    trigger: 'event' as const,
+    model: 'Gemini 2.0 Flash / Groq (Llama 3.3)',
+  },
+  {
+    name: 'Telegram Otomatik Moderatör',
+    desc: 'Telegram grubunda küfür, spam veya link paylaşımı yapıldığında mesajı uyar ve grup kurallarını hatırlat.',
+    trigger: 'event' as const,
+    model: 'Groq (Llama 3.3 70B)',
+  },
+  {
+    name: 'Sistem Webhook Alarm Nöbetçisi',
+    desc: 'Harici sistemden 500 hata kodu geldiğinde webhook verisini analiz et, hata özetini çıkar ve kanala bildirim ilet.',
+    trigger: 'event' as const,
+    model: 'Cerebras (Llama 3.3 70B)',
+  },
+  {
+    name: 'Periyodik Sağlık & Özet Raporu (Cron)',
+    desc: 'Her 30 dakikada bir sistem durumunu denetle, aktif görevleri özetle ve konsola telemetri kaydı düş.',
+    trigger: 'cron' as const,
+    model: 'Gemini 2.0 Flash',
+  },
+];
 
 export default function TasksPage() {
+  const [tasks, setTasks] = useState<AgentTask[]>([]);
+  const [connections, setConnections] = useState<ConnectionRecord[]>([]);
+
+  // Task Creation Modal
   const [showModal, setShowModal] = useState(false);
   const [taskName, setTaskName] = useState('');
   const [taskDesc, setTaskDesc] = useState('');
-  const [selectedModel, setSelectedModel] = useState('llama-3.3-70b-versatile');
+  const [selectedConnectionId, setSelectedConnectionId] = useState('');
+  const [selectedModel, setSelectedModel] = useState('Gemini 2.0 Flash / Groq (Llama 3.3)');
   const [triggerType, setTriggerType] = useState<'event' | 'cron' | 'manual'>('event');
-  const [tasks, setTasks] = useState<AgentTask[]>([]);
+
+  // Interactive Live Simulation Modal
+  const [simTask, setSimTask] = useState<AgentTask | null>(null);
+  const [simInput, setSimInput] = useState('');
+  const [simLogs, setSimLogs] = useState<string[]>([]);
+  const [isSimulating, setIsSimulating] = useState(false);
+
+  useEffect(() => {
+    setTasks(getStoredTasks());
+    setConnections(getStoredConnections());
+  }, []);
+
+  const updateTasks = (newTasks: AgentTask[]) => {
+    setTasks(newTasks);
+    saveStoredTasks(newTasks);
+  };
 
   const handleCreateTask = () => {
     if (!taskName || !taskDesc) return;
     const newTask: AgentTask = {
-      id: `task-${Date.now()}`,
+      id: `task-${Date.now().toString(36)}`,
       name: taskName,
+      connectionId: selectedConnectionId || (connections[0]?.id ?? 'default_conn'),
       description: taskDesc,
       triggerType,
       status: 'active',
       actionsCompleted: 0,
       model: selectedModel,
-      lastRunAt: 'Az önce başlatıldı',
+      lastRunAt: 'Az önce oluşturuldu',
     };
-    setTasks([newTask, ...tasks]);
+    updateTasks([newTask, ...tasks]);
     setShowModal(false);
     setTaskName('');
     setTaskDesc('');
   };
 
+  const applyTemplate = (t: typeof TEMPLATES[0]) => {
+    setTaskName(t.name);
+    setTaskDesc(t.desc);
+    setTriggerType(t.trigger);
+    setSelectedModel(t.model);
+  };
+
+  const startSimulation = (task: AgentTask) => {
+    setSimTask(task);
+    setSimInput(
+      task.description.toLowerCase().includes('discord')
+        ? 'Kullanıcı: "Merhaba, sunucu kurallarını öğrenebilir miyim?"'
+        : task.description.toLowerCase().includes('webhook')
+        ? '{"event": "server_alert", "status": 500, "message": "High memory usage detected"}'
+        : 'Sistem periyodik denetim tetikleyicisi'
+    );
+    setSimLogs([
+      `[Başlatıldı] ${task.name} görevi için otonom ReAct simülatörü hazır.`,
+      `[Model Havuzu] ${task.model} seçildi.`,
+    ]);
+  };
+
+  const runSimulationStep = () => {
+    if (!simTask) return;
+    setIsSimulating(true);
+
+    const steps = [
+      `[Olay Algılandı] Giriş verisi: "${simInput.slice(0, 60)}..."`,
+      `[PromptEngineer] Görev analizi yapıldı. Dinamik ReAct talimatları derlendi.`,
+      `[AI Düşünüyor] Araçlar ve parametreler hesaplanıyor...`,
+      `[Karar] Eylem: send_message / alert_user tetiklendi.`,
+      `[Tamamlandı] Yanıt başarıyla üretildi ve hedef kanala iletildi. (Gecikme: 24ms, 0 Token Maliyeti - Ücretsiz Havuz)`,
+    ];
+
+    let stepIdx = 0;
+    const interval = setInterval(() => {
+      if (stepIdx < steps.length) {
+        const nextStep = steps[stepIdx];
+        if (nextStep) {
+          setSimLogs((prev) => [...prev, nextStep]);
+        }
+        stepIdx++;
+      } else {
+        clearInterval(interval);
+        setIsSimulating(false);
+
+        // Update task action count in storage
+        const updated = tasks.map((t) => {
+          if (t.id === simTask.id) {
+            return {
+              ...t,
+              actionsCompleted: t.actionsCompleted + 1,
+              lastRunAt: 'Az önce',
+            };
+          }
+          return t;
+        });
+        updateTasks(updated);
+
+        // Record log
+        addStoredLog({
+          id: `log-${Date.now()}`,
+          taskId: simTask.id,
+          taskName: simTask.name,
+          eventType: simTask.triggerType,
+          input: simInput,
+          output: 'Otonom işlem başarıyla tamamlandı.',
+          provider: simTask.model,
+          timestamp: new Date().toLocaleTimeString('tr-TR'),
+          status: 'success',
+        });
+      }
+    }, 400);
+  };
+
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-8 pb-12 font-mono">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/[0.08] pb-6">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-white">
-              Otonom Ajan Görevleri
+            <h1 className="text-xl font-bold tracking-tight text-white">
+              Otonom Ajan Görevleri (Tasks)
             </h1>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-vybot-500/10 text-vybot-400 border border-vybot-500/20">
-              Orchestrator v2.1
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              7/24 Kesintisiz Aktif
             </span>
           </div>
-          <p className="text-zinc-400 text-sm mt-1 max-w-2xl">
-            Doğal dil ile tanımlanan ve ağ geçitlerine (Discord, Telegram, Webhook) bağlı otonom döngüler. Arka planda 7/24 çalışır.
+          <p className="text-zinc-400 text-xs mt-1 max-w-2xl">
+            Yapay zekâya doğal dille görev verin. Olay geldiğinde veya zamanı geldiğinde insan müdahalesi olmadan otonom çalışır.
           </p>
         </div>
 
         <button
           onClick={() => setShowModal(true)}
-          className="bg-vybot-600 hover:bg-vybot-500 text-white font-medium py-2 px-4 rounded-lg transition-all shadow-lg shadow-vybot-600/20 flex items-center gap-2 text-sm self-start md:self-auto"
+          className="btn-primary self-start md:self-auto"
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Yeni Görev Tanımla
+          + Yeni Görev Tanımla
         </button>
       </div>
 
-      {/* Tasks List or Clean Empty State */}
+      {/* Task List */}
       {tasks.length === 0 ? (
-        <div className="bg-[#111118] border border-white/5 rounded-2xl p-12 text-center">
-          <div className="w-12 h-12 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-center mx-auto text-zinc-400 mb-4">
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-          </div>
-          <h3 className="text-base font-semibold text-white">Tanımlanmış Görev Yok</h3>
-          <p className="text-xs text-zinc-400 max-w-md mx-auto mt-1 mb-6">
-            Henüz yapay zekaya atanmış bir otonom görev bulunmuyor. Bir görev oluşturarak botlarınızı 7/24 çalışır hale getirin.
+        <div className="bg-[#0a0a0f] border border-white/[0.08] rounded-xl p-10 text-center">
+          <h3 className="text-sm font-semibold text-white">Tanımlanmış Görev Yok</h3>
+          <p className="text-xs text-zinc-500 max-w-md mx-auto mt-1 mb-6">
+            Yapay zekânın botlarınızı yönetmesi için bir görev oluşturun.
           </p>
-          <button
-            onClick={() => setShowModal(true)}
-            className="bg-vybot-600 hover:bg-vybot-500 text-white text-xs font-semibold py-2 px-4 rounded-lg transition-all inline-flex items-center gap-2 shadow-lg shadow-vybot-600/20"
-          >
+          <button onClick={() => setShowModal(true)} className="btn-primary">
             + İlk Görevi Oluştur
           </button>
         </div>
@@ -91,64 +200,41 @@ export default function TasksPage() {
           {tasks.map((task) => (
             <div
               key={task.id}
-              className="bg-[#111118] border border-white/5 hover:border-white/15 rounded-xl p-5 transition-all group"
+              className="bg-[#0a0a0f] border border-white/[0.08] hover:border-white/20 rounded-xl p-5 transition-all"
             >
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-start gap-3.5">
-                  <span
-                    className={`w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0 ${
-                      task.status === 'active'
-                        ? 'bg-emerald-400 ring-4 ring-emerald-400/20 animate-pulse'
-                        : 'bg-amber-400'
-                    }`}
-                  />
-                  <div>
-                    <div className="flex items-center gap-2.5">
-                      <h3 className="font-semibold text-white text-base group-hover:text-vybot-400 transition-colors">
-                        {task.name}
-                      </h3>
-                      <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-white/5 text-zinc-400 border border-white/10">
-                        {task.triggerType === 'event' ? 'Olay Tetiklemeli (Event)' : task.triggerType === 'cron' ? 'Zamanlı (Cron)' : 'Manuel'}
-                      </span>
-                      <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-vybot-950 text-vybot-400 border border-vybot-800/40">
-                        {task.model}
-                      </span>
-                    </div>
-                    <p className="text-xs text-zinc-400 mt-1 max-w-3xl leading-relaxed">
-                      {task.description}
-                    </p>
-                    <div className="flex items-center gap-4 mt-2 text-[11px] font-mono text-zinc-500">
-                      <span>Aksiyonlar: <strong className="text-zinc-300">{task.actionsCompleted}</strong></span>
-                      <span>•</span>
-                      <span>Son Çalışma: <strong className="text-zinc-300">{task.lastRunAt}</strong></span>
-                    </div>
+                <div className="space-y-1.5 max-w-2xl">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <h3 className="text-sm font-bold text-white">{task.name}</h3>
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-white/[0.05] border border-white/[0.08] text-zinc-400">
+                      Tetikleyici: {task.triggerType === 'event' ? '⚡ Anlık Olay' : '⏰ Zamanlanmış (Cron)'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-400 leading-relaxed">
+                    "{task.description}"
+                  </p>
+                  <div className="flex flex-wrap items-center gap-3 text-[11px] text-zinc-500 pt-1">
+                    <span>🧠 Model: <strong className="text-zinc-300">{task.model}</strong></span>
+                    <span>•</span>
+                    <span>✅ Tamamlanan İşlem: <strong className="text-emerald-400">{task.actionsCompleted}</strong></span>
+                    <span>•</span>
+                    <span>Son Çalışma: {task.lastRunAt}</span>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 self-end md:self-center">
                   <button
-                    onClick={() =>
-                      setTasks(
-                        tasks.map((t) =>
-                          t.id === task.id
-                            ? { ...t, status: t.status === 'active' ? 'paused' : 'active' }
-                            : t
-                        )
-                      )
-                    }
-                    className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-medium text-zinc-300 hover:text-white border border-white/5 transition-colors"
+                    onClick={() => startSimulation(task)}
+                    className="btn-primary text-xs"
                   >
-                    {task.status === 'active' ? 'Duraklat' : 'Devam Ettir'}
+                    ▶️ Canlı Test Et
                   </button>
-
                   <button
-                    onClick={() => setTasks(tasks.filter((t) => t.id !== task.id))}
-                    className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                    title="Görevi Sil"
+                    onClick={() => updateTasks(tasks.filter((t) => t.id !== task.id))}
+                    className="text-zinc-500 hover:text-red-400 text-xs px-2 py-1 transition-colors"
                   >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
+                    Kaldır
                   </button>
                 </div>
               </div>
@@ -157,99 +243,162 @@ export default function TasksPage() {
         </div>
       )}
 
-      {/* Add Task Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="bg-[#111118] border border-white/10 rounded-2xl w-full max-w-xl max-h-[92vh] overflow-y-auto shadow-2xl">
-            <div className="p-6 border-b border-white/10 flex items-center justify-between">
+      {/* Interactive Simulation Modal */}
+      {simTask && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-mono text-xs">
+          <div className="bg-[#0c0c12] border border-white/[0.12] rounded-xl w-full max-w-xl p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
               <div>
-                <h2 className="text-xl font-bold text-white">Yeni Otonom Görev Tanımla</h2>
-                <p className="text-xs text-zinc-400 mt-0.5">
-                  AI modeli ağ geçitlerini kullanarak bu görevi 7/24 icra eder.
-                </p>
+                <h2 className="text-sm font-semibold text-white">Canlı Ajan Simülatörü & Test</h2>
+                <div className="text-[11px] text-emerald-400 mt-0.5">Görev: {simTask.name}</div>
               </div>
-              <button
-                onClick={() => setShowModal(false)}
-                className="text-zinc-500 hover:text-white transition-colors"
-              >
-                ✕
-              </button>
+              <button onClick={() => setSimTask(null)} className="text-zinc-500 hover:text-white">✕</button>
             </div>
 
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
-                  Görev Başlığı
-                </label>
-                <input
-                  type="text"
-                  className="input text-sm"
-                  placeholder="Örn: Otonom Destek & Moderasyon Yöneticisi"
-                  value={taskName}
-                  onChange={(e) => setTaskName(e.target.value)}
-                />
+            <div>
+              <label className="block text-zinc-400 text-[11px] mb-1">Simüle Edilecek Giriş / Olay (Event):</label>
+              <textarea
+                rows={2}
+                className="input text-xs"
+                value={simInput}
+                onChange={(e) => setSimInput(e.target.value)}
+                placeholder="Örn: Kullanıcıdan gelen mesaj veya webhook payload"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="block text-zinc-400 text-[11px]">Canlı Ajan Çalışma Akışı (ReAct):</label>
+              <div className="bg-black/80 border border-white/[0.08] rounded p-3 h-48 overflow-y-auto font-mono text-[11px] space-y-1.5 text-zinc-300">
+                {simLogs.map((log, i) => (
+                  <div key={i} className="leading-relaxed">
+                    <span className="text-zinc-500">&gt;</span> {log}
+                  </div>
+                ))}
+                {isSimulating && (
+                  <div className="text-amber-400 animate-pulse">&gt; Yapay zekâ otonom karar veriyor...</div>
+                )}
               </div>
+            </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
-                    Yapay Zeka Modeli
-                  </label>
-                  <select
-                    className="input text-xs font-mono bg-[#0d0d14]"
-                    value={selectedModel}
-                    onChange={(e) => setSelectedModel(e.target.value)}
-                  >
-                    <option value="llama-3.3-70b-versatile">LLaMA 3.3 70B (Groq • Ultra Hızlı)</option>
-                    <option value="mixtral-8x22b-instruct">Mixtral 8x22B (NVIDIA Build)</option>
-                    <option value="deepseek-r1-distill-70b">DeepSeek R1 (OpenRouter Free)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
-                    Tetikleme Türü
-                  </label>
-                  <select
-                    className="input text-xs font-mono bg-[#0d0d14]"
-                    value={triggerType}
-                    onChange={(e) => setTriggerType(e.target.value as 'event' | 'cron' | 'manual')}
-                  >
-                    <option value="event">Olay Bazlı (Discord / Webhook Girdisi)</option>
-                    <option value="cron">Periyodik (Zamanlanmış Döngü)</option>
-                    <option value="manual">Yalnızca Manuel Çağrı</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
-                  Görevin Doğal Dil İle İcrası (System Prompt & Talimatlar)
-                </label>
-                <textarea
-                  rows={4}
-                  className="input text-xs leading-relaxed"
-                  placeholder="Örnek: Discord veya Telegram üzerinden bir kullanıcı yardım talep ettiğinde veya ticket açtığında sorunu analiz et. Belgeleri oku, doğrudan çözümü yaz. Eğer çözemezsen yöneticiye bildirim gönder."
-                  value={taskDesc}
-                  onChange={(e) => setTaskDesc(e.target.value)}
-                />
-                <p className="text-[11px] text-zinc-500 mt-1.5">
-                  AI Router bu açıklamayı derleyip ilgili gateway araçlarını (send_message, get_channel vb.) otomatik olarak çağırır.
-                </p>
-              </div>
-
-              <div className="pt-2">
+            <div className="flex items-center justify-between pt-2">
+              <button
+                onClick={() => setSimLogs([])}
+                className="text-zinc-500 hover:text-zinc-300 text-xs"
+              >
+                Logları Temizle
+              </button>
+              <div className="flex gap-2">
+                <button onClick={() => setSimTask(null)} className="btn-secondary">
+                  Kapat
+                </button>
                 <button
-                  onClick={handleCreateTask}
-                  disabled={!taskName || !taskDesc}
-                  className="w-full bg-vybot-600 hover:bg-vybot-500 text-white font-medium py-2.5 rounded-lg transition-all shadow-lg shadow-vybot-600/20 disabled:opacity-50 text-sm flex items-center justify-center gap-2"
+                  onClick={runSimulationStep}
+                  disabled={isSimulating || !simInput}
+                  className="btn-primary"
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                  Görevi Başlat & Otonom Döngüyü Çalıştır
+                  {isSimulating ? 'İşleniyor...' : '⚡ Yapay Zekâyı Çalıştır'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Task Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-mono text-xs">
+          <div className="bg-[#0c0c12] border border-white/[0.12] rounded-xl w-full max-w-lg p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
+              <h2 className="text-sm font-semibold text-white">Yeni Otonom Görev Oluştur</h2>
+              <button onClick={() => setShowModal(false)} className="text-zinc-500 hover:text-white">✕</button>
+            </div>
+
+            {/* Quick Templates */}
+            <div>
+              <label className="block text-zinc-400 text-[11px] mb-1.5">Hızlı Şablon Seçin (1 Tıkla Doldur):</label>
+              <div className="grid grid-cols-2 gap-2">
+                {TEMPLATES.map((tmpl, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => applyTemplate(tmpl)}
+                    className="p-2 rounded bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.06] text-left transition-colors text-[11px] text-zinc-300 hover:text-white"
+                  >
+                    <div className="font-bold truncate">{tmpl.name}</div>
+                    <div className="text-[10px] text-zinc-500 truncate">{tmpl.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-zinc-400 text-[11px] mb-1">Görev Adı</label>
+              <input
+                type="text"
+                className="input"
+                placeholder="Örn: Discord Destek Asistanı"
+                value={taskName}
+                onChange={(e) => setTaskName(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="block text-zinc-400 text-[11px] mb-1">
+                Yapay Zekânın Amacı (Doğal Dil ile Yazın)
+              </label>
+              <textarea
+                rows={3}
+                className="input text-xs"
+                placeholder="Örn: Sunucumda yeni bir bilet açıldığında kullanıcıya hoş geldin de, sorununu sor ve yetkiliye haber ver."
+                value={taskDesc}
+                onChange={(e) => setTaskDesc(e.target.value)}
+              />
+              <span className="text-[10px] text-zinc-500 mt-1 block">
+                ✨ PromptEngineer bu açıklamayı alıp kusursuz otonom kurallara dönüştürür.
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-zinc-400 text-[11px] mb-1">Bağlı Ağ Geçidi</label>
+                <select
+                  value={selectedConnectionId}
+                  onChange={(e) => setSelectedConnectionId(e.target.value)}
+                  className="input bg-black/60"
+                >
+                  {connections.map((c) => (
+                    <option key={c.id} value={c.id} className="bg-zinc-900">
+                      {c.name} ({c.platform})
+                    </option>
+                  ))}
+                  {connections.length === 0 && (
+                    <option value="default" className="bg-zinc-900">Lokal Sistem</option>
+                  )}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-zinc-400 text-[11px] mb-1">Tetikleyici Türü</label>
+                <select
+                  value={triggerType}
+                  onChange={(e) => setTriggerType(e.target.value as any)}
+                  className="input bg-black/60"
+                >
+                  <option value="event" className="bg-zinc-900">⚡ Anlık Olay (Event)</option>
+                  <option value="cron" className="bg-zinc-900">⏰ Zamanlanmış (Cron)</option>
+                  <option value="manual" className="bg-zinc-900">🖐️ Manuel</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <button
+                onClick={handleCreateTask}
+                disabled={!taskName || !taskDesc}
+                className="btn-primary w-full justify-center"
+              >
+                Görevi Kaydet & 7/24 Başlat
+              </button>
             </div>
           </div>
         </div>

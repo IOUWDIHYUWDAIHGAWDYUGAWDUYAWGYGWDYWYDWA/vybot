@@ -40,7 +40,7 @@ jobs:
 
       - name: Build Web Dashboard
         run: |
-          pnpm --filter @vybot/web build
+          pnpm build
           echo "vyai.bot.nu" > apps/web/out/CNAME
           touch apps/web/out/.nojekyll
         env:

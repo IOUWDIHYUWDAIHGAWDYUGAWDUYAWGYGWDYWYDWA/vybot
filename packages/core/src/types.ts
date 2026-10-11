@@ -60,7 +60,17 @@ export type VyResult = z.infer<typeof VyResultSchema>;
 // ==========================================
 // AI & LLM Types
 // ==========================================
-export const AIProviderSchema = z.enum(['groq', 'nvidia', 'openrouter']);
+export const AIProviderSchema = z.enum([
+  'groq',
+  'gemini',
+  'cerebras',
+  'nvidia',
+  'openrouter',
+  'mistral',
+  'github',
+  'huggingface',
+  'mock',
+]);
 export type AIProvider = z.infer<typeof AIProviderSchema>;
 
 export interface AIMessage {

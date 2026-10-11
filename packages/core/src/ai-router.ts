@@ -1,5 +1,5 @@
 import type { AIMessage, AITool, AIResponse, AIProvider } from './types';
-import { RateLimitExhaustedError, ProviderError } from './errors';
+import { RateLimitExhaustedError, ProviderError, NoConfiguredProviderError } from './errors';
 
 /** Per-provider rate limit tracking */
 interface ProviderLimits {
@@ -10,7 +10,7 @@ interface ProviderLimits {
   dayResetAt: number;
 }
 
-interface ProviderConfig {
+export interface ProviderConfig {
   name: AIProvider;
   priority: number;
   baseUrl: string;
@@ -21,20 +21,40 @@ interface ProviderConfig {
   maxTPD: number;
 }
 
-const PROVIDER_CONFIGS: ProviderConfig[] = [
+export const PROVIDER_CONFIGS: ProviderConfig[] = [
+  {
+    name: 'gemini',
+    priority: 1,
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+    apiKeyEnv: 'GEMINI_API_KEY',
+    defaultModel: 'gemini-2.0-flash',
+    maxRPM: 15,
+    maxRPD: 1_500,
+    maxTPD: 1_000_000,
+  },
   {
     name: 'groq',
-    priority: 1,
+    priority: 2,
     baseUrl: 'https://api.groq.com/openai/v1',
     apiKeyEnv: 'GROQ_API_KEY',
-    defaultModel: 'llama-3.1-8b-instant',
+    defaultModel: 'llama-3.3-70b-versatile',
     maxRPM: 30,
     maxRPD: 14_400,
     maxTPD: 500_000,
   },
   {
+    name: 'cerebras',
+    priority: 3,
+    baseUrl: 'https://api.cerebras.ai/v1',
+    apiKeyEnv: 'CEREBRAS_API_KEY',
+    defaultModel: 'llama-3.3-70b',
+    maxRPM: 30,
+    maxRPD: 14_400,
+    maxTPD: 1_000_000,
+  },
+  {
     name: 'nvidia',
-    priority: 2,
+    priority: 4,
     baseUrl: 'https://integrate.api.nvidia.com/v1',
     apiKeyEnv: 'NVIDIA_API_KEY',
     defaultModel: 'meta/llama-3.1-8b-instruct',
@@ -43,14 +63,54 @@ const PROVIDER_CONFIGS: ProviderConfig[] = [
     maxTPD: 500_000,
   },
   {
+    name: 'mistral',
+    priority: 5,
+    baseUrl: 'https://api.mistral.ai/v1',
+    apiKeyEnv: 'MISTRAL_API_KEY',
+    defaultModel: 'mistral-small-latest',
+    maxRPM: 30,
+    maxRPD: 5_000,
+    maxTPD: 500_000,
+  },
+  {
     name: 'openrouter',
-    priority: 3,
+    priority: 6,
     baseUrl: 'https://openrouter.ai/api/v1',
     apiKeyEnv: 'OPENROUTER_API_KEY',
     defaultModel: 'meta-llama/llama-3.1-8b-instruct:free',
     maxRPM: 20,
-    maxRPD: 50,
+    maxRPD: 200,
     maxTPD: 200_000,
+  },
+  {
+    name: 'github',
+    priority: 7,
+    baseUrl: 'https://models.inference.ai.azure.com',
+    apiKeyEnv: 'GITHUB_TOKEN',
+    defaultModel: 'gpt-4o-mini',
+    maxRPM: 15,
+    maxRPD: 150,
+    maxTPD: 150_000,
+  },
+  {
+    name: 'huggingface',
+    priority: 8,
+    baseUrl: 'https://api-inference.huggingface.co/v1',
+    apiKeyEnv: 'HUGGINGFACE_API_KEY',
+    defaultModel: 'meta-llama/Llama-3.2-3B-Instruct',
+    maxRPM: 30,
+    maxRPD: 1_000,
+    maxTPD: 300_000,
+  },
+  {
+    name: 'mock',
+    priority: 99,
+    baseUrl: 'local://mock',
+    apiKeyEnv: 'ALLOW_MOCK_AI',
+    defaultModel: 'mock-agent-v1',
+    maxRPM: 10_000,
+    maxRPD: 100_000,
+    maxTPD: 10_000_000,
   },
 ];
 
@@ -59,6 +119,8 @@ export interface AIRouterOptions {
   providers?: Partial<ProviderConfig>[];
   /** Preferred model override per provider */
   modelOverrides?: Partial<Record<AIProvider, string>>;
+  /** Automatically fall back to mock provider if no API keys are configured */
+  allowMockFallback?: boolean;
 }
 
 export interface ChatOptions {
@@ -76,6 +138,7 @@ export class AIRouter {
   private configs: ProviderConfig[];
   private limits: Map<AIProvider, ProviderLimits> = new Map();
   private modelOverrides: Partial<Record<AIProvider, string>>;
+  private allowMockFallback: boolean;
 
   constructor(options: AIRouterOptions = {}) {
     this.configs = PROVIDER_CONFIGS.map((def) => {
@@ -84,6 +147,7 @@ export class AIRouter {
     }).sort((a, b) => a.priority - b.priority);
 
     this.modelOverrides = options.modelOverrides ?? {};
+    this.allowMockFallback = options.allowMockFallback ?? process.env.ALLOW_MOCK_AI === 'true';
 
     // Initialize limits
     for (const cfg of this.configs) {
@@ -99,31 +163,57 @@ export class AIRouter {
 
   /** Send a chat request with automatic provider fallback */
   async chat(messages: AIMessage[], tools?: AITool[], options: ChatOptions = {}): Promise<AIResponse> {
-    // If a specific provider is forced, try only that one
-    const providers = options.provider
+    const candidateProviders = options.provider
       ? this.configs.filter((c) => c.name === options.provider)
       : this.configs;
 
-    for (const cfg of providers) {
-      const apiKey = process.env[cfg.apiKeyEnv];
-      if (!apiKey) continue;
+    let attemptedAny = false;
 
-      if (!this.isAvailable(cfg.name)) continue;
+    for (const cfg of candidateProviders) {
+      const isMock = cfg.name === 'mock';
+      const apiKey = process.env[cfg.apiKeyEnv];
+
+      // If mock is disabled and no env set, skip mock
+      if (isMock && !this.allowMockFallback && process.env.ALLOW_MOCK_AI !== 'true') {
+        continue;
+      }
+
+      if (!isMock && !apiKey) {
+        continue;
+      }
+
+      if (!this.isAvailable(cfg.name)) {
+        continue;
+      }
+
+      attemptedAny = true;
 
       try {
-        return await this.callProvider(cfg, apiKey, messages, tools, options);
+        return await this.callProvider(cfg, apiKey ?? 'mock-key', messages, tools, options);
       } catch (err) {
-        if (err instanceof ProviderError && err.providerStatusCode === 429) {
-          // Mark this minute as exhausted and try next provider
-          const lim = this.limits.get(cfg.name)!;
-          lim.requestsThisMinute = cfg.maxRPM;
+        if (err instanceof ProviderError && (err.providerStatusCode === 429 || err.providerStatusCode >= 500)) {
+          // Exhausted or provider error: mark minute limit and proceed to next provider
+          const lim = this.limits.get(cfg.name);
+          if (lim) {
+            lim.requestsThisMinute = cfg.maxRPM;
+          }
+          console.warn(`[AIRouter] Provider ${cfg.name} failed with ${err.providerStatusCode}. Falling back to next provider.`);
           continue;
         }
         throw err;
       }
     }
 
-    // All providers exhausted
+    if (!attemptedAny) {
+      // If user enabled mock fallback, run mock
+      if (this.allowMockFallback || process.env.ALLOW_MOCK_AI === 'true') {
+        const mockCfg = this.configs.find((c) => c.name === 'mock')!;
+        return this.callMockProvider(mockCfg, messages, tools, options);
+      }
+      throw new NoConfiguredProviderError();
+    }
+
+    // All available providers exhausted their limits
     const soonest = this.getEarliestReset();
     throw new RateLimitExhaustedError(soonest);
   }
@@ -133,7 +223,8 @@ export class AIRouter {
     const lim = this.limits.get(provider);
     if (!lim) return false;
     this.maybeResetCounters(provider);
-    const cfg = this.configs.find((c) => c.name === provider)!;
+    const cfg = this.configs.find((c) => c.name === provider);
+    if (!cfg) return false;
     return (
       lim.requestsThisMinute < cfg.maxRPM &&
       lim.requestsToday < cfg.maxRPD &&
@@ -148,10 +239,20 @@ export class AIRouter {
     if (!lim || !cfg) return { rpm: 0, rpd: 0, tpd: 0 };
     this.maybeResetCounters(provider);
     return {
-      rpm: cfg.maxRPM - lim.requestsThisMinute,
-      rpd: cfg.maxRPD - lim.requestsToday,
-      tpd: cfg.maxTPD - lim.tokensToday,
+      rpm: Math.max(0, cfg.maxRPM - lim.requestsThisMinute),
+      rpd: Math.max(0, cfg.maxRPD - lim.requestsToday),
+      tpd: Math.max(0, cfg.maxTPD - lim.tokensToday),
     };
+  }
+
+  /** Get list of currently configured providers with active keys */
+  getConfiguredProviders(): AIProvider[] {
+    return this.configs
+      .filter((c) => {
+        if (c.name === 'mock') return this.allowMockFallback || process.env.ALLOW_MOCK_AI === 'true';
+        return !!process.env[c.apiKeyEnv];
+      })
+      .map((c) => c.name);
   }
 
   // ─── Internal ──────────────────────────────────────────────
@@ -163,6 +264,10 @@ export class AIRouter {
     tools: AITool[] | undefined,
     options: ChatOptions,
   ): Promise<AIResponse> {
+    if (cfg.name === 'mock') {
+      return this.callMockProvider(cfg, messages, tools, options);
+    }
+
     const model = options.model ?? this.modelOverrides[cfg.name] ?? cfg.defaultModel;
     const startMs = Date.now();
 
@@ -191,7 +296,6 @@ export class AIRouter {
       Authorization: `Bearer ${apiKey}`,
     };
 
-    // OpenRouter requires extra headers
     if (cfg.name === 'openrouter') {
       headers['HTTP-Referer'] = 'https://vybot.app';
       headers['X-Title'] = 'VyBot';
@@ -219,10 +323,12 @@ export class AIRouter {
     };
 
     // Track usage
-    const lim = this.limits.get(cfg.name)!;
-    lim.requestsThisMinute++;
-    lim.requestsToday++;
-    lim.tokensToday += tokensUsed.total;
+    const lim = this.limits.get(cfg.name);
+    if (lim) {
+      lim.requestsThisMinute++;
+      lim.requestsToday++;
+      lim.tokensToday += tokensUsed.total;
+    }
 
     return {
       content: choice?.message?.content ?? '',
@@ -231,6 +337,53 @@ export class AIRouter {
       model,
       tokensUsed,
       latencyMs,
+    };
+  }
+
+  private callMockProvider(
+    cfg: ProviderConfig,
+    messages: AIMessage[],
+    tools: AITool[] | undefined,
+    options: ChatOptions,
+  ): AIResponse {
+    const lastMsg = messages[messages.length - 1]?.content ?? '';
+    const hasTools = tools && tools.length > 0;
+    let toolCalls = undefined;
+    let content = `[Mock AI] Analysis completed for request: "${lastMsg.slice(0, 80)}"`;
+
+    if (hasTools && tools && tools[0]) {
+      const chosenTool = tools[0];
+      toolCalls = [
+        {
+          id: `mock_call_${Date.now()}`,
+          type: 'function' as const,
+          function: {
+            name: chosenTool.name,
+            arguments: JSON.stringify({
+              action: chosenTool.name,
+              reason: 'Simulated autonomous action',
+              simulated: true,
+            }),
+          },
+        },
+      ];
+      content = `[Mock AI] Autonomous execution plan decided. Invoking ${chosenTool.name}.`;
+    }
+
+    const lim = this.limits.get('mock');
+    if (lim) {
+      lim.requestsThisMinute++;
+      lim.requestsToday++;
+      lim.tokensToday += 50;
+    }
+
+    return {
+      content,
+      toolCalls,
+      provider: 'mock',
+      model: options.model ?? cfg.defaultModel,
+      tokensUsed: { prompt: 25, completion: 25, total: 50 },
+      latencyMs: 12,
     };
   }
 

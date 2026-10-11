@@ -39,3 +39,13 @@ export class CredentialError extends VyBotError {
     this.name = 'CredentialError';
   }
 }
+
+export class NoConfiguredProviderError extends VyBotError {
+  constructor(
+    message: string = 'No AI provider is configured with an active API key. Please configure at least one free provider (e.g. GEMINI_API_KEY, GROQ_API_KEY, CEREBRAS_API_KEY, etc.) in your environment variables.'
+  ) {
+    super(message, 'NO_CONFIGURED_PROVIDER', 400);
+    this.name = 'NoConfiguredProviderError';
+  }
+}
+

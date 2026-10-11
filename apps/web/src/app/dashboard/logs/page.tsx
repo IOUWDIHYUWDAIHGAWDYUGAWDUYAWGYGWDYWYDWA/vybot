@@ -32,12 +32,20 @@ export default function LogsPage() {
       </div>
 
       {logs.length === 0 ? (
-        <div className="bg-[#0a0a0f] border border-white/[0.08] rounded-xl text-center py-16">
-          <div className="text-3xl mb-3">📋</div>
+        <div className="bg-[#08080c] border border-white/[0.08] rounded-lg text-center py-16 p-6">
+          <div className="w-10 h-10 rounded-md bg-white/[0.03] border border-white/[0.08] flex items-center justify-center mx-auto text-zinc-400 mb-3">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
           <h2 className="text-sm font-semibold text-white mb-1">Henüz Denetim Kaydı Yok</h2>
-          <p className="text-zinc-500 text-xs max-w-sm mx-auto">
-            "Otonom Görevler" sayfasından bir görev çalıştırdığınızda yapay zekânın tüm kararları burada listelenir.
+          <p className="text-zinc-500 text-xs max-w-sm mx-auto mb-4">
+            Ajanlar bir olayı dinleyip eyleme geçtiğinde tüm telemetri ve karar akışları burada listelenir.
           </p>
+          <div className="max-w-md mx-auto p-2.5 rounded bg-black/50 border border-white/[0.06] text-left text-[11px] text-zinc-400 font-mono">
+            <div>TELEMETRY_DAEMON: <span className="text-emerald-400">Idle / Ready</span></div>
+            <div>BUFFER_POOL: <span className="text-zinc-500">0 / 10,000 events</span></div>
+          </div>
         </div>
       ) : (
         <div className="border border-white/[0.08] rounded-xl overflow-x-auto bg-[#0a0a0f]">

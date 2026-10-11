@@ -1,4 +1,4 @@
-import { EventEmitter } from 'node:events';
+import { EventEmitter } from 'events';
 import { VyEvent, VyEventSource, VyEventType } from './types';
 
 export type VyEventHandler = (event: VyEvent) => void | Promise<void>;

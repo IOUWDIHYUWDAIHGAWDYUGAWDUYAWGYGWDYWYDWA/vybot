@@ -1,5 +1,6 @@
 'use client';
 import { useState, useMemo, useEffect } from 'react';
+import Link from 'next/link';
 import {
   getStoredConnections,
   saveStoredConnections,
@@ -193,6 +194,61 @@ export default function ConnectionsPage() {
           <div className="text-[10px] uppercase text-zinc-500 tracking-wider">Ağ Gecikmesi</div>
           <div className="text-lg font-bold text-emerald-400 mt-1">14ms</div>
           <div className="text-[10px] text-zinc-500 mt-1">Ultra Hızlı Yanıt</div>
+        </div>
+      </div>
+
+      {/* Visual In-Page Guide Cards */}
+      <div className="bg-[#0a0a0f] border border-white/[0.08] rounded-xl p-4 font-mono text-xs space-y-3">
+        <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
+          <div className="flex items-center gap-2">
+            <span className="text-base">📖</span>
+            <span className="font-bold text-white text-xs">Hızlı Bot Bağlama Rehberi (Doğrudan Linkler):</span>
+          </div>
+          <Link href="/dashboard/guide" className="text-emerald-400 hover:underline text-[11px]">
+            Tüm Kılavuzu Aç →
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="p-3 rounded bg-black/40 border border-white/[0.06] space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-white text-[11px]">🤖 Discord Bot Token:</span>
+              <a
+                href="https://discord.com/developers/applications"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-emerald-400 hover:underline text-[10px]"
+              >
+                Developer Portal ↗
+              </a>
+            </div>
+            <p className="text-zinc-400 text-[10px] leading-relaxed">
+              1. <strong>New Application</strong> &gt; İsim verip oluşturun.<br />
+              2. Soldan <strong>Bot</strong> sekmesine geçip <strong>Reset Token</strong> butonuna basın.<br />
+              3. <strong>MESSAGE CONTENT INTENT</strong> iznini mutlaka açık yapın.<br />
+              4. Kopyaladığınız tokenı yukarıdaki <strong>+ Yeni Ağ Geçidi Ekle</strong>'ye yapıştırın.
+            </p>
+          </div>
+
+          <div className="p-3 rounded bg-black/40 border border-white/[0.06] space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-white text-[11px]">✈️ Telegram Bot Token:</span>
+              <a
+                href="https://t.me/BotFather"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-emerald-400 hover:underline text-[10px]"
+              >
+                @BotFather Başlat ↗
+              </a>
+            </div>
+            <p className="text-zinc-400 text-[10px] leading-relaxed">
+              1. Telegram'da <strong>@BotFather</strong> ile sohbet başlatın.<br />
+              2. <code>/newbot</code> komutu gönderip isim belirleyin.<br />
+              3. Size verilen <code>123456:ABC-DEF...</code> tokenını kopyalayın.<br />
+              4. <strong>+ Yeni Ağ Geçidi Ekle</strong> butonuna basıp Telegram seçin ve yapıştırın.
+            </p>
+          </div>
         </div>
       </div>
 

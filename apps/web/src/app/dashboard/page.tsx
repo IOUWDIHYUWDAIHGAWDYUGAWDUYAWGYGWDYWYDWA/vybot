@@ -54,6 +54,30 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Visual Onboarding & Guide Banner */}
+      <div className="p-4 rounded-lg bg-gradient-to-r from-vybot-950/40 via-purple-950/20 to-black border border-vybot-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-lg bg-vybot-600/30 border border-vybot-500/50 flex items-center justify-center text-vybot-300 font-bold text-sm shrink-0">
+            💡
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+              Sistemi Nasıl Kullanacağınızı Bilmiyor Musunuz?
+              <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-normal">Görsel Kılavuz</span>
+            </h3>
+            <p className="text-xs text-zinc-300 mt-0.5">
+              Kod bilmenize gerek yok! Botunuzu nasıl bağlayacağınızı görsellerle izleyin veya canlı simülatörde hemen test edin.
+            </p>
+          </div>
+        </div>
+        <Link
+          href="/dashboard/guide"
+          className="btn-primary shrink-0 text-xs py-2 px-4 shadow-md font-sans font-bold"
+        >
+          Görsel Rehberi & Simülatörü Aç →
+        </Link>
+      </div>
+
       {/* Real Infrastructure Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-[#0a0a0f] border border-white/[0.08] rounded-xl p-5">

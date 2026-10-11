@@ -1,217 +1,319 @@
 'use client';
-import Link from 'next/link';
+import { useState } from 'react';
 
 export default function GuidePage() {
+  const [activeTab, setActiveTab] = useState<'discord' | 'telegram' | 'simulator'>('simulator');
+  const [simulatorRole, setSimulatorRole] = useState('destek');
+  const [messages, setMessages] = useState<Array<{ sender: 'user' | 'bot'; text: string; time: string }>>([
+    {
+      sender: 'bot',
+      text: 'Merhaba! Ben VyBot yapay zeka asistanıyım. Sunucunuzda veya kanalınızda 7/24 çalışabilirim. Bana aklınıza gelen herhangi bir şeyi sorun, nasıl cevap verdiğimi test edin!',
+      time: '12:00',
+    },
+  ]);
+  const [inputMessage, setInputMessage] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+
+  const handleSendMessage = () => {
+    if (!inputMessage.trim()) return;
+
+    const userText = inputMessage;
+    const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    setMessages((prev) => [...prev, { sender: 'user', text: userText, time: now }]);
+    setInputMessage('');
+    setIsTyping(true);
+
+    setTimeout(() => {
+      let botResponse = '';
+      const lower = userText.toLowerCase();
+
+      if (simulatorRole === 'destek') {
+        if (lower.includes('fiyat') || lower.includes('ücret') || lower.includes('kaç para')) {
+          botResponse = 'Paketlerimiz ayda $9 (Startup) ve $29 (Business) olarak ücretlendirilmektedir. İlk ay ücretsiz test edebilirsiniz! Size hangi konuda yardımcı olabilirim?';
+        } else if (lower.includes('merhaba') || lower.includes('selam')) {
+          botResponse = 'Harika bir gün dilerim! Müşteri destek kanalına hoş geldiniz. Size nasıl yardımcı olabilirim?';
+        } else {
+          botResponse = `Talebinizi aldım ("${userText}"). Otonom sistem olarak bu soruyu hemen çözebilir veya dilerseniz insan yöneticimize bildirebilirim.`;
+        }
+      } else if (simulatorRole === 'moderator') {
+        if (lower.includes('küfür') || lower.includes('salak') || lower.includes('aptal')) {
+          botResponse = '⚠️ UYARI: Sunucu kuralları gereği hakaret veya argo kullanımı yasaktır. Lütfen saygılı bir dil kullanın.';
+        } else {
+          botResponse = 'Mesajınız incelendi, sunucu kurallarına tamamen uygun. İyi sohbetler!';
+        }
+      } else {
+        botResponse = `Harika bir soru! Otonom yapay zeka motoru olarak her türlü konuda üyelerinizle 7/24 kesintisiz iletişim kurabilirim.`;
+      }
+
+      setMessages((prev) => [...prev, { sender: 'bot', text: botResponse, time: now }]);
+      setIsTyping(false);
+    }, 600);
+  };
+
   return (
     <div className="space-y-8 pb-12 font-mono text-xs">
       {/* Header */}
-      <div className="border-b border-white/[0.08] pb-6">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl font-bold tracking-tight text-white">
-            📖 VyBot Entegrasyon & Kurulum Rehberi
+      <div className="border-b border-white/[0.08] pb-5">
+        <div className="flex items-center gap-2.5">
+          <h1 className="text-xl font-semibold text-white tracking-tight">
+            Görsel Kullanım Kılavuzu & Canlı Simülatör
           </h1>
-          <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
-            Adım Adım Kılavuz
+          <span className="text-[10px] px-2 py-0.5 rounded bg-vybot-500/10 border border-vybot-500/20 text-vybot-400">
+            Adım Adım Anlatım
           </span>
         </div>
-        <p className="text-zinc-400 mt-1 max-w-2xl leading-relaxed">
-          Tek satır kod yazmadan Discord botu kurun, Telegram bağlayın ve ücretsiz yapay zekâ ile 7/24 otonom çalıştırın.
+        <p className="text-zinc-400 text-xs mt-1 max-w-2xl">
+          Hiçbir teknik bilginiz olmasına gerek yok. Aşağıdaki görsel adımları izleyerek veya canlı simülatörü deneyerek sistemin nasıl çalıştığını hemen görün.
         </p>
       </div>
 
-      {/* Guide Cards */}
-      <div className="grid grid-cols-1 gap-6">
-        {/* Section 1: Discord */}
-        <div className="bg-[#0a0a0f] border border-white/[0.08] rounded-xl p-6 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/[0.06] pb-3">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">🤖</span>
-              <h2 className="text-sm font-bold text-white">1. Bölüm: Discord Botu Kurma & Token Alma</h2>
-            </div>
-            <a
-              href="https://discord.com/developers/applications"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-primary self-start sm:self-auto text-[11px]"
-            >
-              Discord Developer Portal'ı Aç ↗
-            </a>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-zinc-300">
-            <div className="p-3.5 rounded bg-black/40 border border-white/[0.06] space-y-2">
-              <div className="font-bold text-white text-[11px]">Adım 1.1: Yeni Bot Uygulaması Açın</div>
-              <p className="text-zinc-400 text-[11px] leading-relaxed">
-                1. Yukarıdaki butona tıklayarak <strong>Discord Developer Portal</strong> sayfasına gidin.<br />
-                2. Sağ üstteki <strong>"New Application"</strong> butonuna basın ve botunuza bir isim verin (Örn: <em>VyBot Destek</em>).<br />
-                3. Şartları onaylayıp <strong>"Create"</strong> deyin.
-              </p>
-            </div>
-
-            <div className="p-3.5 rounded bg-black/40 border border-white/[0.06] space-y-2">
-              <div className="font-bold text-white text-[11px]">Adım 1.2: Bot Token'ını Alın & Kopyalayın</div>
-              <p className="text-zinc-400 text-[11px] leading-relaxed">
-                1. Sol menüden <strong>"Bot"</strong> sekmesine tıklayın.<br />
-                2. <strong>"Reset Token"</strong> butonuna basın ve şifrenizi girin.<br />
-                3. Ekrana gelen uzun token kodunu (<code>MTM...</code>) <strong>Copy</strong> diyerek kopyalayın.<br />
-                <em>(Not: Bu tokenı kimseyle paylaşmayın; şifreniz gibidir).</em>
-              </p>
-            </div>
-
-            <div className="p-3.5 rounded bg-black/40 border border-white/[0.06] space-y-2">
-              <div className="font-bold text-emerald-400 text-[11px]">⚠️ Adım 1.3: ÇOK ÖNEMLİ — Mesaj Okuma İzni</div>
-              <p className="text-zinc-400 text-[11px] leading-relaxed">
-                Aynı "Bot" sayfasında aşağı kaydırın ve <strong>"Privileged Gateway Intents"</strong> başlığı altındaki:
-                <br /><strong className="text-white">• MESSAGE CONTENT INTENT</strong> seçeneğini mutlaka <strong>AÇIK (Mavi)</strong> yapın ve kaydedin.
-                <br /><em>(Bunu açmazsanız bot sunucudaki mesajları okuyamaz).</em>
-              </p>
-            </div>
-
-            <div className="p-3.5 rounded bg-black/40 border border-white/[0.06] space-y-2">
-              <div className="font-bold text-white text-[11px]">Adım 1.4: Botu Sunucunuza Davet Edin</div>
-              <p className="text-zinc-400 text-[11px] leading-relaxed">
-                1. Sol menüden <strong>OAuth2 &gt; URL Generator</strong> sekmesine gidin.<br />
-                2. SCOPES kısmından <strong>"bot"</strong> kutucuğunu işaretleyin.<br />
-                3. BOT PERMISSIONS kısmından <strong>"Administrator"</strong> (veya Mesaj Gönder/Oku) seçin.<br />
-                4. En alttaki linki tarayıcınıza yapıştırıp botu kendi Discord sunucunuza ekleyin.
-              </p>
-            </div>
-          </div>
-
-          <div className="pt-2 flex justify-end">
-            <Link href="/dashboard/connections" className="btn-primary text-xs">
-              → Token'ı Aldım, Ağ Geçitlerine Ekle
-            </Link>
-          </div>
-        </div>
-
-        {/* Section 2: Telegram */}
-        <div className="bg-[#0a0a0f] border border-white/[0.08] rounded-xl p-6 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/[0.06] pb-3">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">✈️</span>
-              <h2 className="text-sm font-bold text-white">2. Bölüm: Telegram Botu Kurma (1 Dakikada)</h2>
-            </div>
-            <a
-              href="https://t.me/BotFather"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-primary self-start sm:self-auto text-[11px]"
-            >
-              Telegram @BotFather'ı Aç ↗
-            </a>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-zinc-300">
-            <div className="p-3.5 rounded bg-black/40 border border-white/[0.06] space-y-2">
-              <div className="font-bold text-white text-[11px]">1. BotFather Sohbeti</div>
-              <p className="text-zinc-400 text-[11px] leading-relaxed">
-                Telegram uygulamasında resmi <strong>@BotFather</strong> botunu açın ve <strong>Başlat (Start)</strong> butonuna basın.
-              </p>
-            </div>
-
-            <div className="p-3.5 rounded bg-black/40 border border-white/[0.06] space-y-2">
-              <div className="font-bold text-white text-[11px]">2. /newbot Komutu</div>
-              <p className="text-zinc-400 text-[11px] leading-relaxed">
-                Sohbete <code>/newbot</code> yazıp gönderin. Botunuza bir isim (Örn: <em>Yardım Asistanı</em>) ve <code>bot</code> ile biten bir kullanıcı adı (Örn: <em>vy_yardim_bot</em>) verin.
-              </p>
-            </div>
-
-            <div className="p-3.5 rounded bg-black/40 border border-white/[0.06] space-y-2">
-              <div className="font-bold text-white text-[11px]">3. Token'ı Kopyalayın</div>
-              <p className="text-zinc-400 text-[11px] leading-relaxed">
-                BotFather size <code>123456789:ABCdefGh...</code> şeklinde bir HTTP API Token verecektir. Bu tokenı kopyalayıp sistemimize ekleyin.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Section 3: Tasks and Live Testing */}
-        <div className="bg-[#0a0a0f] border border-white/[0.08] rounded-xl p-6 space-y-4">
-          <div className="border-b border-white/[0.06] pb-3">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">⚡</span>
-              <h2 className="text-sm font-bold text-white">3. Bölüm: Görev Tanımlama & Canlı Simülasyon</h2>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-3.5 rounded bg-black/40 border border-white/[0.06] space-y-2">
-              <div className="font-bold text-white text-[11px]">Doğal Dille Görev Vermek</div>
-              <p className="text-zinc-400 text-[11px] leading-relaxed">
-                Kod yazmanıza hiç gerek yok. <strong>Otonom Görevler (Tasks)</strong> sayfasına gidin ve ne istediğinizi Türkçe olarak yazın:
-                <br /><em className="text-zinc-300">"Destek bileti açılınca kullanıcıya kibarca hoş geldin de ve sorunun ne olduğunu sor."</em>
-                <br />Sistemimiz bu açıklamayı kurumsal ReAct talimatlarına otomatik çevirir.
-              </p>
-            </div>
-
-            <div className="p-3.5 rounded bg-black/40 border border-white/[0.06] space-y-2">
-              <div className="font-bold text-white text-[11px]">▶️ "Canlı Test Et" Özelliği</div>
-              <p className="text-zinc-400 text-[11px] leading-relaxed">
-                Görevinizi oluşturduktan sonra hemen yanındaki <strong>"Canlı Test Et"</strong> butonuna basın.
-                Simüle edilen kullanıcı mesajını gönderin ve yapay zekânın olayı nasıl düşünüp işlediğini, hangi eylemi aldığını canlı ekranda izleyin.
-              </p>
-            </div>
-          </div>
-
-          <div className="pt-2 flex justify-end">
-            <Link href="/dashboard/tasks" className="btn-primary text-xs">
-              → Görevler Sayfasına Git & Test Et
-            </Link>
-          </div>
-        </div>
-
-        {/* Section 4: Free AI Tokens */}
-        <div className="bg-[#0a0a0f] border border-white/[0.08] rounded-xl p-6 space-y-4">
-          <div className="border-b border-white/[0.06] pb-3">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">🎁</span>
-              <h2 className="text-sm font-bold text-white">4. Bölüm: Tamamen Ücretsiz AI Anahtarları Nereden Alınır?</h2>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="p-3 rounded bg-black/40 border border-white/[0.06]">
-              <div className="font-bold text-white text-[11px]">1. Google AI Studio (Gemini)</div>
-              <div className="text-[10px] text-zinc-400 mt-1">15 RPM, 1.500 istek/gün tamamen ücretsiz</div>
-              <a
-                href="https://aistudio.google.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-emerald-400 text-[11px] underline mt-2 block"
-              >
-                aistudio.google.com ↗
-              </a>
-            </div>
-
-            <div className="p-3 rounded bg-black/40 border border-white/[0.06]">
-              <div className="font-bold text-white text-[11px]">2. Groq Cloud (Llama 3.3)</div>
-              <div className="text-[10px] text-zinc-400 mt-1">14.400 istek/gün, saniyede 500+ token</div>
-              <a
-                href="https://console.groq.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-emerald-400 text-[11px] underline mt-2 block"
-              >
-                console.groq.com ↗
-              </a>
-            </div>
-
-            <div className="p-3 rounded bg-black/40 border border-white/[0.06]">
-              <div className="font-bold text-white text-[11px]">3. Cerebras Cloud (Ultra Hızlı)</div>
-              <div className="text-[10px] text-zinc-400 mt-1">1M token/gün ücretsiz çıkarım</div>
-              <a
-                href="https://cloud.cerebras.ai"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-emerald-400 text-[11px] underline mt-2 block"
-              >
-                cloud.cerebras.ai ↗
-              </a>
-            </div>
-          </div>
-        </div>
+      {/* Tabs */}
+      <div className="flex items-center gap-2 border-b border-white/[0.08] pb-3 overflow-x-auto">
+        <button
+          onClick={() => setActiveTab('simulator')}
+          className={`px-3 py-1.5 rounded-md transition-all font-semibold ${
+            activeTab === 'simulator'
+              ? 'bg-white text-black shadow-sm'
+              : 'text-zinc-400 hover:text-white bg-white/[0.02]'
+          }`}
+        >
+          🎮 1. Canlı Bot Simülatörü (Hemen Dene)
+        </button>
+        <button
+          onClick={() => setActiveTab('discord')}
+          className={`px-3 py-1.5 rounded-md transition-all font-semibold ${
+            activeTab === 'discord'
+              ? 'bg-white text-black shadow-sm'
+              : 'text-zinc-400 hover:text-white bg-white/[0.02]'
+          }`}
+        >
+          👾 2. Discord Botu Nasıl Bağlanır?
+        </button>
+        <button
+          onClick={() => setActiveTab('telegram')}
+          className={`px-3 py-1.5 rounded-md transition-all font-semibold ${
+            activeTab === 'telegram'
+              ? 'bg-white text-black shadow-sm'
+              : 'text-zinc-400 hover:text-white bg-white/[0.02]'
+          }`}
+        >
+          ✈️ 3. Telegram Botu Nasıl Bağlanır?
+        </button>
       </div>
+
+      {/* TAB 1: SIMULATOR */}
+      {activeTab === 'simulator' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-4">
+            <div className="p-4 rounded-lg bg-[#08080c] border border-white/[0.08]">
+              <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="font-semibold text-white">Canlı Bot Test Penceresi</span>
+                  <span className="text-[10px] text-zinc-500">
+                    ({simulatorRole === 'destek' ? 'Destek Asistanı' : simulatorRole === 'moderator' ? 'Moderatör Botu' : 'Sohbet Botu'})
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setSimulatorRole('destek')}
+                    className={`px-2 py-0.5 rounded text-[10px] ${simulatorRole === 'destek' ? 'bg-white text-black font-bold' : 'text-zinc-400 hover:text-white'}`}
+                  >
+                    Destek
+                  </button>
+                  <button
+                    onClick={() => setSimulatorRole('moderator')}
+                    className={`px-2 py-0.5 rounded text-[10px] ${simulatorRole === 'moderator' ? 'bg-white text-black font-bold' : 'text-zinc-400 hover:text-white'}`}
+                  >
+                    Moderatör
+                  </button>
+                  <button
+                    onClick={() => setSimulatorRole('sohbet')}
+                    className={`px-2 py-0.5 rounded text-[10px] ${simulatorRole === 'sohbet' ? 'bg-white text-black font-bold' : 'text-zinc-400 hover:text-white'}`}
+                  >
+                    Sohbet
+                  </button>
+                </div>
+              </div>
+
+              {/* Chat Message Window */}
+              <div className="h-72 overflow-y-auto p-4 space-y-3 font-sans text-xs">
+                {messages.map((m, idx) => (
+                  <div
+                    key={idx}
+                    className={`flex flex-col ${m.sender === 'user' ? 'items-end' : 'items-start'}`}
+                  >
+                    <div className="text-[10px] font-mono text-zinc-500 mb-0.5">
+                      {m.sender === 'user' ? 'Siz' : 'VyBot Yapay Zeka'} • {m.time}
+                    </div>
+                    <div
+                      className={`max-w-md p-3 rounded-lg leading-relaxed ${
+                        m.sender === 'user'
+                          ? 'bg-vybot-600 text-white rounded-br-none'
+                          : 'bg-zinc-800/80 border border-white/10 text-zinc-200 rounded-bl-none'
+                      }`}
+                    >
+                      {m.text}
+                    </div>
+                  </div>
+                ))}
+                {isTyping && (
+                  <div className="text-zinc-500 text-[11px] font-mono animate-pulse">
+                    VyBot yanıt hazırlıyor...
+                  </div>
+                )}
+              </div>
+
+              {/* Input Area */}
+              <div className="pt-3 border-t border-white/[0.06] flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="Bota bir şey yazın (Örn: 'Ürün fiyatları nedir?' veya 'Merhaba')..."
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                  className="input flex-1 text-xs"
+                />
+                <button
+                  onClick={handleSendMessage}
+                  className="btn-primary py-2 px-4 shrink-0"
+                >
+                  Gönder →
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Prompts to Test */}
+            <div className="flex flex-wrap items-center gap-2 text-[11px]">
+              <span className="text-zinc-500">Hızlıca Dene:</span>
+              <button
+                onClick={() => setInputMessage('Ürün fiyatlarınız ne kadar?')}
+                className="px-2 py-1 rounded bg-white/[0.03] border border-white/10 hover:border-white/30 text-zinc-300"
+              >
+                "Ürün fiyatlarınız ne kadar?"
+              </button>
+              <button
+                onClick={() => setInputMessage('Sunucuda küfür etmek yasak mı?')}
+                className="px-2 py-1 rounded bg-white/[0.03] border border-white/10 hover:border-white/30 text-zinc-300"
+              >
+                "Sunucuda küfür etmek yasak mı?"
+              </button>
+              <button
+                onClick={() => setInputMessage('Bana bu platformu özetler misin?')}
+                className="px-2 py-1 rounded bg-white/[0.03] border border-white/10 hover:border-white/30 text-zinc-300"
+              >
+                "Bana bu platformu özetler misin?"
+              </button>
+            </div>
+          </div>
+
+          {/* Explanation Card */}
+          <div className="p-5 rounded-lg bg-[#08080c] border border-white/[0.08] space-y-4">
+            <h3 className="text-sm font-semibold text-white">Bu Sistem Nasıl Çalışıyor?</h3>
+            <div className="space-y-3 text-zinc-400 text-[11px] leading-relaxed">
+              <div className="p-3 rounded bg-black/40 border border-white/[0.06]">
+                <strong className="text-white block mb-1">1. Gelen Mesajı Dinler:</strong>
+                Kullanıcı Discord veya Telegram&apos;dan yazdığında mesaj anında yapay zekaya ulaşır.
+              </div>
+              <div className="p-3 rounded bg-black/40 border border-white/[0.06]">
+                <strong className="text-white block mb-1">2. Kuralları Uygular:</strong>
+                Sizin panelde belirlediğiniz talimatlara göre (Örn: "Kibar ol", "Fiyatı söyle") cevabı hazırlar.
+              </div>
+              <div className="p-3 rounded bg-black/40 border border-white/[0.06]">
+                <strong className="text-white block mb-1">3. Anında Cevap Verir:</strong>
+                Hiçbir insan müdahalesi olmadan bot saniyeler içinde kanala cevabı yazar.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: DISCORD GUIDE */}
+      {activeTab === 'discord' && (
+        <div className="space-y-6">
+          <div className="p-6 rounded-lg bg-[#08080c] border border-white/[0.08] space-y-6">
+            <h2 className="text-sm font-bold text-white uppercase tracking-wider">
+              Discord Botunu 3 Adımda Sisteme Bağlama
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 rounded bg-black/40 border border-white/[0.06] space-y-2">
+                <div className="w-6 h-6 rounded bg-vybot-600 text-white font-bold flex items-center justify-center text-xs">
+                  1
+                </div>
+                <h3 className="font-semibold text-white text-xs">Discord Developer Portal&apos;a Git</h3>
+                <p className="text-zinc-400 text-[11px] leading-relaxed">
+                  <a href="https://discord.com/developers/applications" target="_blank" rel="noreferrer" className="text-vybot-400 underline">discord.com/developers</a> adresine girin ve <strong>"New Application"</strong> diyerek botunuza bir isim verin.
+                </p>
+              </div>
+
+              <div className="p-4 rounded bg-black/40 border border-white/[0.06] space-y-2">
+                <div className="w-6 h-6 rounded bg-vybot-600 text-white font-bold flex items-center justify-center text-xs">
+                  2
+                </div>
+                <h3 className="font-semibold text-white text-xs">Bot Token&apos;ını Kopyala</h3>
+                <p className="text-zinc-400 text-[11px] leading-relaxed">
+                  Soldaki <strong>"Bot"</strong> menüsüne tıklayın. <strong>"Reset Token"</strong> butonuna basıp çıkan gizli kodu kopyalayın.
+                </p>
+              </div>
+
+              <div className="p-4 rounded bg-black/40 border border-white/[0.06] space-y-2">
+                <div className="w-6 h-6 rounded bg-vybot-600 text-white font-bold flex items-center justify-center text-xs">
+                  3
+                </div>
+                <h3 className="font-semibold text-white text-xs">Paneline Yapıştır & Başlat</h3>
+                <p className="text-zinc-400 text-[11px] leading-relaxed">
+                  VyBot panelindeki <a href="/dashboard/connections" className="text-vybot-400 underline">Ağ Geçitleri</a> sayfasına gelip <strong>"Discord"</strong> seçin ve kodu yapıştırın. Botunuz artık canlı!
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: TELEGRAM GUIDE */}
+      {activeTab === 'telegram' && (
+        <div className="space-y-6">
+          <div className="p-6 rounded-lg bg-[#08080c] border border-white/[0.08] space-y-6">
+            <h2 className="text-sm font-bold text-white uppercase tracking-wider">
+              Telegram Botunu 30 Saniyede Oluşturma
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 rounded bg-black/40 border border-white/[0.06] space-y-2">
+                <div className="w-6 h-6 rounded bg-emerald-600 text-white font-bold flex items-center justify-center text-xs">
+                  1
+                </div>
+                <h3 className="font-semibold text-white text-xs">@BotFather&apos;ı Açın</h3>
+                <p className="text-zinc-400 text-[11px] leading-relaxed">
+                  Telegram arama çubuğuna <strong>@BotFather</strong> yazın ve resmi bota girip <strong>/start</strong> deyin.
+                </p>
+              </div>
+
+              <div className="p-4 rounded bg-black/40 border border-white/[0.06] space-y-2">
+                <div className="w-6 h-6 rounded bg-emerald-600 text-white font-bold flex items-center justify-center text-xs">
+                  2
+                </div>
+                <h3 className="font-semibold text-white text-xs">/newbot Komutunu Verin</h3>
+                <p className="text-zinc-400 text-[11px] leading-relaxed">
+                  BotFather&apos;a <code>/newbot</code> yazın. Botunuza bir isim ve sonu <code>bot</code> ile biten bir kullanıcı adı verin.
+                </p>
+              </div>
+
+              <div className="p-4 rounded bg-black/40 border border-white/[0.06] space-y-2">
+                <div className="w-6 h-6 rounded bg-emerald-600 text-white font-bold flex items-center justify-center text-xs">
+                  3
+                </div>
+                <h3 className="font-semibold text-white text-xs">Token&apos;ı Yapıştırın</h3>
+                <p className="text-zinc-400 text-[11px] leading-relaxed">
+                  BotFather&apos;ın verdiği kırmızı renkli API anahtarını kopyalayın ve VyBot&apos;taki <a href="/dashboard/connections" className="text-emerald-400 underline">Ağ Geçitleri</a> sayfasına yapıştırın!
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

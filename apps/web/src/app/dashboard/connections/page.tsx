@@ -14,56 +14,7 @@ interface ConnectionItem {
   rateLimitUsage: string;
 }
 
-const INITIAL_CONNECTIONS: ConnectionItem[] = [
-  {
-    id: 'conn-prod-01',
-    name: 'Discord Community Engine (Main)',
-    platform: 'discord',
-    status: 'active',
-    tokenMasked: 'Bot MTM2MT...9QkuOb',
-    latencyMs: 24,
-    environment: 'production',
-    toolsDiscovered: ['discord:send_message', 'discord:read_channel', 'discord:ban_member', 'discord:create_role'],
-    lastPing: '2 saniye önce',
-    rateLimitUsage: '42 / 120 req/dk',
-  },
-  {
-    id: 'conn-prod-02',
-    name: 'Telegram Real-Time Alert Channel',
-    platform: 'telegram',
-    status: 'active',
-    tokenMasked: '719482...AAGW3j8',
-    latencyMs: 19,
-    environment: 'production',
-    toolsDiscovered: ['telegram:send_message', 'telegram:send_photo', 'telegram:webhook_stream'],
-    lastPing: '6 saniye önce',
-    rateLimitUsage: '12 / 30 req/dk',
-  },
-  {
-    id: 'conn-prod-03',
-    name: 'GitHub CI/CD Automation Bot',
-    platform: 'github',
-    status: 'active',
-    tokenMasked: 'ghp_••••••••••••••••3fa1',
-    latencyMs: 31,
-    environment: 'production',
-    toolsDiscovered: ['github:create_issue', 'github:merge_pr', 'github:trigger_workflow'],
-    lastPing: '12 saniye önce',
-    rateLimitUsage: '110 / 5000 req/sa',
-  },
-  {
-    id: 'conn-prod-04',
-    name: 'MCP Universal Context Protocol Gateway',
-    platform: 'mcp',
-    status: 'syncing',
-    tokenMasked: 'mcp://gateway.internal:8080/v1',
-    latencyMs: 8,
-    environment: 'production',
-    toolsDiscovered: ['mcp:execute_tool', 'mcp:read_resource', 'mcp:list_prompts'],
-    lastPing: 'Şimdi',
-    rateLimitUsage: 'Sınırsız (Lokal)',
-  },
-];
+const INITIAL_CONNECTIONS: ConnectionItem[] = [];
 
 const PLATFORM_DETAILS = {
   discord: {
@@ -381,97 +332,117 @@ export default function ConnectionsPage() {
         </div>
       </div>
 
-      {/* Connections Grid */}
-      <div className="grid grid-cols-1 gap-4">
-        {filteredConnections.map((conn) => {
-          const detail = PLATFORM_DETAILS[conn.platform];
-          const isPinging = pingingId === conn.id;
+      {/* Connections Grid or Empty State */}
+      {filteredConnections.length === 0 ? (
+        <div className="bg-[#111118] border border-white/5 rounded-2xl p-12 text-center">
+          <div className="w-12 h-12 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-center mx-auto text-zinc-400 mb-4">
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+          <h3 className="text-base font-semibold text-white">Bağlı Ağ Geçidi Bulunmuyor</h3>
+          <p className="text-xs text-zinc-400 max-w-md mx-auto mt-1 mb-6">
+            Henüz sisteme eklenmiş bir API anahtarı, webhook veya bot token&apos;ı yok. İlk entegrasyonunuzu tanımlayarak otonom keşfi başlatın.
+          </p>
+          <button
+            onClick={() => setShowModal(true)}
+            className="bg-vybot-600 hover:bg-vybot-500 text-white text-xs font-semibold py-2 px-4 rounded-lg transition-all inline-flex items-center gap-2 shadow-lg shadow-vybot-600/20"
+          >
+            + Ağ Geçidi Tanımla
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4">
+          {filteredConnections.map((conn) => {
+            const detail = PLATFORM_DETAILS[conn.platform];
+            const isPinging = pingingId === conn.id;
 
-          return (
-            <div
-              key={conn.id}
-              className="bg-[#111118] border border-white/5 hover:border-white/15 rounded-xl p-5 transition-all group"
-            >
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                <div className="flex items-start gap-4">
-                  <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-white shadow-inner flex-shrink-0"
-                    style={{ backgroundColor: `${detail.color}20`, border: `1px solid ${detail.color}40` }}
-                  >
-                    <span className="text-xs uppercase font-mono tracking-wider" style={{ color: detail.color }}>
-                      {conn.platform.slice(0, 3)}
-                    </span>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-white text-base group-hover:text-vybot-400 transition-colors">
-                        {conn.name}
-                      </h3>
-                      <span className="text-xs px-2 py-0.5 rounded bg-white/5 border border-white/10 text-zinc-400 font-mono">
-                        {detail.badge}
+            return (
+              <div
+                key={conn.id}
+                className="bg-[#111118] border border-white/5 hover:border-white/15 rounded-xl p-5 transition-all group"
+              >
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  <div className="flex items-start gap-4">
+                    <div
+                      className="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-white shadow-inner flex-shrink-0"
+                      style={{ backgroundColor: `${detail.color}20`, border: `1px solid ${detail.color}40` }}
+                    >
+                      <span className="text-xs uppercase font-mono tracking-wider" style={{ color: detail.color }}>
+                        {conn.platform.slice(0, 3)}
                       </span>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-zinc-400">
-                      <span className="font-mono text-zinc-500 flex items-center gap-1">
-                        <svg className="w-3.5 h-3.5 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 2a4 4 0 00-4 4v1H5a1 1 0 00-.994.89l-1 9A1 1 0 004 18h12a1 1 0 00.994-1.11l-1-9A1 1 0 0015 7h-1V6a4 4 0 00-4-4zm2 5V6a2 2 0 10-4 0v1h4zm-6 3a1 1 0 112 0 1 1 0 01-2 0zm7-1a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" />
-                        </svg>
-                        {conn.tokenMasked}
-                      </span>
-                      <span>•</span>
-                      <span>Son Doğrulama: <strong className="text-zinc-300">{conn.lastPing}</strong></span>
-                      <span>•</span>
-                      <span>Limit Kotası: <strong className="text-zinc-300">{conn.rateLimitUsage}</strong></span>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-white text-base group-hover:text-vybot-400 transition-colors">
+                          {conn.name}
+                        </h3>
+                        <span className="text-xs px-2 py-0.5 rounded bg-white/5 border border-white/10 text-zinc-400 font-mono">
+                          {detail.badge}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-zinc-400">
+                        <span className="font-mono text-zinc-500 flex items-center gap-1">
+                          <svg className="w-3.5 h-3.5 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 2a4 4 0 00-4 4v1H5a1 1 0 00-.994.89l-1 9A1 1 0 004 18h12a1 1 0 00.994-1.11l-1-9A1 1 0 0015 7h-1V6a4 4 0 00-4-4zm2 5V6a2 2 0 10-4 0v1h4zm-6 3a1 1 0 112 0 1 1 0 01-2 0zm7-1a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" />
+                          </svg>
+                          {conn.tokenMasked}
+                        </span>
+                        <span>•</span>
+                        <span>Son Doğrulama: <strong className="text-zinc-300">{conn.lastPing}</strong></span>
+                        <span>•</span>
+                        <span>Limit Kotası: <strong className="text-zinc-300">{conn.rateLimitUsage}</strong></span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-3 self-end lg:self-center">
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-black/40 border border-white/5 text-xs font-mono">
-                    <span className={`w-2 h-2 rounded-full ${isPinging ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'}`}></span>
-                    <span className="text-zinc-300">{conn.latencyMs}ms</span>
+                  <div className="flex items-center gap-3 self-end lg:self-center">
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-black/40 border border-white/5 text-xs font-mono">
+                      <span className={`w-2 h-2 rounded-full ${isPinging ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'}`}></span>
+                      <span className="text-zinc-300">{conn.latencyMs}ms</span>
+                    </div>
+
+                    <button
+                      onClick={() => handleTestPing(conn.id)}
+                      disabled={isPinging}
+                      className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-medium text-zinc-300 hover:text-white border border-white/5 transition-colors disabled:opacity-50"
+                    >
+                      {isPinging ? 'Ping Atılıyor...' : 'Test Handshake'}
+                    </button>
+
+                    <button
+                      onClick={() => setConnections(connections.filter((c) => c.id !== conn.id))}
+                      className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                      title="Bağlantıyı Kaldır"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
                   </div>
-
-                  <button
-                    onClick={() => handleTestPing(conn.id)}
-                    disabled={isPinging}
-                    className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-medium text-zinc-300 hover:text-white border border-white/5 transition-colors disabled:opacity-50"
-                  >
-                    {isPinging ? 'Ping Atılıyor...' : 'Test Handshake'}
-                  </button>
-
-                  <button
-                    onClick={() => setConnections(connections.filter((c) => c.id !== conn.id))}
-                    className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                    title="Bağlantıyı Kaldır"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
                 </div>
-              </div>
 
-              {/* Discovered Autonomous Tools Bar */}
-              <div className="mt-4 pt-3 border-t border-white/5 flex flex-wrap items-center gap-2">
-                <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-500">
-                  Enjekte Edilen AI Araçları:
-                </span>
-                {conn.toolsDiscovered.map((tool) => (
-                  <span
-                    key={tool}
-                    className="text-[11px] font-mono px-2 py-0.5 rounded bg-vybot-950/60 text-vybot-300 border border-vybot-800/40"
-                  >
-                    {tool}
+                {/* Discovered Autonomous Tools Bar */}
+                <div className="mt-4 pt-3 border-t border-white/5 flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-500">
+                    Enjekte Edilen AI Araçları:
                   </span>
-                ))}
+                  {conn.toolsDiscovered.map((tool) => (
+                    <span
+                      key={tool}
+                      className="text-[11px] font-mono px-2 py-0.5 rounded bg-vybot-950/60 text-vybot-300 border border-vybot-800/40"
+                    >
+                      {tool}
+                    </span>
+                  ))}
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Add Gateway Modal */}
       {showModal && (
